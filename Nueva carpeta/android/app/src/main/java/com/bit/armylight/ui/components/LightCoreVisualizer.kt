@@ -71,23 +71,23 @@ fun LightCoreVisualizer(
         label = "PulseAlpha"
     )
 
-    val colorStep by transition.animateInt(
-        initialValue = 0,
-        targetValue = 360,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = when (concertProgram) {
-                    ConcertProgram.STROBE -> 1800
-                    ConcertProgram.WAVE -> 4000
-                    ConcertProgram.SUPERNOVA -> 2400
-                    ConcertProgram.AURORA -> 7000
-                },
-                easing = LinearEasing
-            ),
-            repeatMode = RepeatMode.Restart
+    val colorStep by transition.animateFloat(
+    initialValue = 0f,
+    targetValue = 360f,
+    animationSpec = infiniteRepeatable(
+        animation = tween(
+            durationMillis = when (concertProgram) {
+                ConcertProgram.STROBE -> 1800
+                ConcertProgram.WAVE -> 4000
+                ConcertProgram.SUPERNOVA -> 2400
+                ConcertProgram.AURORA -> 7000
+            },
+            easing = LinearEasing
         ),
-        label = "ColorCycle"
-    )
+        repeatMode = RepeatMode.Restart
+    ),
+    label = "ColorCycle"
+)
 
     val factor = intensity.factor
 
