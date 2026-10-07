@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Único permiso requerido para respuesta háptica opcional en conciertos -->
-    <!-- CERO permisos de Internet, CERO GPS, CERO Cámara, CERO Cuenta -->
+    <!-- Vibración para los modos de concierto -->
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Micrófono para el Modo Ritmo -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:allowBackup="false"
@@ -18,11 +20,14 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:theme="@style/Theme.BitArmyLight">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
+
     </application>
 
 </manifest>
