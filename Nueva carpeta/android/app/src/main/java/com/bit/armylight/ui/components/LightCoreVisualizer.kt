@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.unit.dp
 import com.bit.armylight.viewmodel.ConcertProgram
 import com.bit.armylight.viewmodel.LightIntensity
 import kotlinx.coroutines.delay
@@ -51,7 +50,7 @@ fun LightCoreVisualizer(
 
     /*
      * ============================================================
-     * ANIMACIONES BASE
+     * ANIMACIONES
      * ============================================================
      */
 
@@ -185,7 +184,7 @@ fun LightCoreVisualizer(
 
     /*
      * ============================================================
-     * VALORES
+     * RITMO
      * ============================================================
      */
 
@@ -195,11 +194,31 @@ fun LightCoreVisualizer(
             1f
         )
 
-    val intensityFactor =
-        intensity.factor.coerceIn(
-            0.3f,
+    val rhythmVisual =
+        (
+            rhythm * 2.8f
+        ).coerceIn(
+            0f,
             1f
         )
+
+    val rhythmPeak =
+        (
+            (
+                rhythmVisual -
+                    0.35f
+            ) /
+                0.65f
+        ).coerceIn(
+            0f,
+            1f
+        )
+
+    /*
+     * ============================================================
+     * ALPHA
+     * ============================================================
+     */
 
     val alpha =
         if (isBatterySaver) {
@@ -209,18 +228,21 @@ fun LightCoreVisualizer(
         }
 
     /*
-     * La figura prácticamente se mantiene estable.
-     * Solo Pulso y Ritmo generan un movimiento evidente.
+     * ============================================================
+     * ESCALA DE FIGURA
+     * ============================================================
      */
 
     val figureScale =
         when {
+
             isPulseActive ->
                 pulse
 
             isRhythmActive ->
-                1f +
-                    rhythm * 0.035f
+                0.96f +
+                    rhythmVisual *
+                    0.16f
 
             else ->
                 breathing
@@ -422,6 +444,15 @@ fun LightCoreVisualizer(
                         )
                 )
 
+                val waveCenter =
+                    Offset(
+                        travelX +
+                            size.width *
+                            0.20f,
+                        size.height *
+                            0.45f
+                    )
+
                 drawCircle(
                     brush =
                         Brush.radialGradient(
@@ -436,25 +467,13 @@ fun LightCoreVisualizer(
                                     Color.Transparent
                                 ),
                             center =
-                                Offset(
-                                    travelX +
-                                        size.width *
-                                        0.20f,
-                                    size.height *
-                                        0.45f
-                                ),
+                                waveCenter,
                             radius =
                                 size.maxDimension *
                                     0.65f
                         ),
                     center =
-                        Offset(
-                            travelX +
-                                size.width *
-                                0.20f,
-                            size.height *
-                                0.45f
-                        ),
+                        waveCenter,
                     radius =
                         size.maxDimension *
                             0.65f
@@ -781,15 +800,19 @@ fun LightCoreVisualizer(
             if (isRhythmActive) {
 
                 val energy =
-                    rhythm
+                    rhythmVisual
 
                 val rhythmRadius =
                     minDimension *
                         (
-                            0.30f +
+                            0.22f +
                                 energy *
-                                0.75f
+                                0.95f
                         )
+
+                /*
+                 * Halo principal.
+                 */
 
                 drawCircle(
                     brush =
@@ -798,16 +821,32 @@ fun LightCoreVisualizer(
                                 listOf(
                                     Color.White.copy(
                                         alpha =
-                                            0.08f +
+                                            0.18f +
+                                                energy *
+                                                0.55f
+                                    ),
+
+                                    Color(0xFFF0C8FF).copy(
+                                        alpha =
+                                            0.20f +
+                                                energy *
+                                                0.35f
+                                    ),
+
+                                    Color(0xFFC000FF).copy(
+                                        alpha =
+                                            0.30f +
+                                                energy *
+                                                0.38f
+                                    ),
+
+                                    Color(0xFF7800FF).copy(
+                                        alpha =
+                                            0.16f +
                                                 energy *
                                                 0.28f
                                     ),
-                                    Color(0xFFD000FF).copy(
-                                        alpha =
-                                            0.25f +
-                                                energy *
-                                                0.30f
-                                    ),
+
                                     Color.Transparent
                                 ),
                             center =
@@ -820,6 +859,121 @@ fun LightCoreVisualizer(
                     radius =
                         rhythmRadius
                 )
+
+                /*
+                 * Anillo exterior.
+                 */
+
+                val outerRadius =
+                    minDimension *
+                        (
+                            0.42f +
+                                energy *
+                                1.20f
+                        )
+
+                drawCircle(
+                    color =
+                        Color(0xFFB020FF).copy(
+                            alpha =
+                                0.08f +
+                                    energy *
+                                    0.20f
+                        ),
+                    center =
+                        center,
+                    radius =
+                        outerRadius,
+                    style =
+                        Stroke(
+                            width =
+                                minDimension *
+                                    (
+                                        0.008f +
+                                            energy *
+                                            0.012f
+                                    )
+                        )
+                )
+
+                /*
+                 * Destello central.
+                 */
+
+                if (energy > 0.12f) {
+
+                    val flashRadius =
+                        minDimension *
+                            (
+                                0.06f +
+                                    energy *
+                                    0.22f
+                            )
+
+                    drawCircle(
+                        brush =
+                            Brush.radialGradient(
+                                colors =
+                                    listOf(
+                                        Color.White.copy(
+                                            alpha =
+                                                0.35f +
+                                                    energy *
+                                                    0.65f
+                                        ),
+                                        Color(0xFFE7A7FF).copy(
+                                            alpha =
+                                                0.30f +
+                                                    energy *
+                                                    0.35f
+                                        ),
+                                        Color.Transparent
+                                    ),
+                                center =
+                                    center,
+                                radius =
+                                    flashRadius
+                            ),
+                        center =
+                            center,
+                        radius =
+                            flashRadius
+                    )
+                }
+
+                /*
+                 * Golpe fuerte.
+                 */
+
+                if (rhythmPeak > 0.55f) {
+
+                    val peakRadius =
+                        minDimension *
+                            (
+                                0.50f +
+                                    rhythmPeak *
+                                    0.65f
+                            )
+
+                    drawCircle(
+                        color =
+                            Color.White.copy(
+                                alpha =
+                                    rhythmPeak *
+                                    0.30f
+                            ),
+                        center =
+                            center,
+                        radius =
+                            peakRadius,
+                        style =
+                            Stroke(
+                                width =
+                                    minDimension *
+                                        0.012f
+                            )
+                    )
+                }
             }
 
             /*
@@ -888,7 +1042,7 @@ fun LightCoreVisualizer(
                     figureScale
 
             /*
-             * HALO
+             * Halo principal.
              */
 
             drawCircle(
@@ -927,7 +1081,7 @@ fun LightCoreVisualizer(
             )
 
             /*
-             * HALO ADICIONAL
+             * Halo secundario.
              */
 
             drawCircle(
@@ -973,7 +1127,7 @@ fun LightCoreVisualizer(
             )
 
             /*
-             * SEGUNDA ÓRBITA DE COLOR
+             * SEGUNDA ÓRBITA
              */
 
             drawOrbit(
@@ -1004,17 +1158,36 @@ fun LightCoreVisualizer(
              * FIGURA
              */
 
+            val rhythmFigureAlpha =
+                if (isRhythmActive) {
+
+                    (
+                        alpha *
+                            (
+                                0.72f +
+                                    rhythmVisual *
+                                    0.28f
+                            )
+                    ).coerceIn(
+                        0f,
+                        1f
+                    )
+
+                } else {
+                    alpha
+                }
+
             drawMainFigure(
                 center =
                     center,
                 radius =
                     figureRadius,
                 alpha =
-                    alpha
+                    rhythmFigureAlpha
             )
 
             /*
-             * ÓRBITA FINA DELANTE
+             * ÓRBITA DELANTERA
              */
 
             drawOrbit(
@@ -1042,7 +1215,9 @@ fun LightCoreVisualizer(
             )
 
             /*
-             * DESTELLOS GRANDES
+             * ====================================================
+             * DESTELLOS
+             * ====================================================
              */
 
             drawSparkle(
@@ -1126,7 +1301,7 @@ fun LightCoreVisualizer(
             )
 
             /*
-             * PARTÍCULAS PEQUEÑAS
+             * Partículas pequeñas.
              */
 
             drawSparkle(
@@ -1215,18 +1390,8 @@ fun LightCoreVisualizer(
 
 /*
  * ================================================================
- * FIGURA CENTRAL PREMIUM
+ * FIGURA CENTRAL ORIGINAL
  * ================================================================
- *
- * Símbolo abstracto original:
- *
- * - cuatro puntas curvas
- * - núcleo luminoso
- * - degradado blanco / lila / violeta
- * - doble halo
- * - borde cristalino
- *
- * No utiliza símbolos ni logotipos de BTS.
  */
 
 private fun DrawScope.drawMainFigure(
@@ -1239,9 +1404,7 @@ private fun DrawScope.drawMainFigure(
         Path()
 
     /*
-     * ============================================================
-     * PUNTA SUPERIOR
-     * ============================================================
+     * Superior.
      */
 
     outerPath.moveTo(
@@ -1251,7 +1414,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * SUPERIOR → DERECHA
+     * Superior → derecha.
      */
 
     outerPath.cubicTo(
@@ -1271,7 +1434,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * DERECHA → INFERIOR
+     * Derecha → inferior.
      */
 
     outerPath.cubicTo(
@@ -1291,7 +1454,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * INFERIOR → IZQUIERDA
+     * Inferior → izquierda.
      */
 
     outerPath.cubicTo(
@@ -1311,7 +1474,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * IZQUIERDA → SUPERIOR
+     * Izquierda → superior.
      */
 
     outerPath.cubicTo(
@@ -1333,9 +1496,7 @@ private fun DrawScope.drawMainFigure(
     outerPath.close()
 
     /*
-     * ============================================================
-     * GLOW EXTERIOR
-     * ============================================================
+     * Glow exterior.
      */
 
     drawPath(
@@ -1358,9 +1519,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * ============================================================
-     * SEGUNDO HALO
-     * ============================================================
+     * Segundo halo.
      */
 
     drawPath(
@@ -1383,9 +1542,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * ============================================================
-     * CUERPO PRINCIPAL
-     * ============================================================
+     * Cuerpo.
      */
 
     drawPath(
@@ -1397,24 +1554,26 @@ private fun DrawScope.drawMainFigure(
                     listOf(
                         Color.White.copy(
                             alpha =
-                                1f *
-                                    alpha
+                                alpha
                         ),
+
                         Color(0xFFF9E9FF).copy(
                             alpha =
-                                1f *
-                                    alpha
+                                alpha
                         ),
+
                         Color(0xFFE0A8FF).copy(
                             alpha =
                                 0.99f *
                                     alpha
                         ),
+
                         Color(0xFFB25CFF).copy(
                             alpha =
                                 0.98f *
                                     alpha
                         ),
+
                         Color(0xFF7028D9).copy(
                             alpha =
                                 0.98f *
@@ -1439,9 +1598,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * ============================================================
-     * REFLEJO INTERNO
-     * ============================================================
+     * Reflejo interior.
      */
 
     val innerHighlight =
@@ -1534,9 +1691,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * ============================================================
-     * NÚCLEO CENTRAL
-     * ============================================================
+     * Núcleo.
      */
 
     drawCircle(
@@ -1546,8 +1701,7 @@ private fun DrawScope.drawMainFigure(
                     listOf(
                         Color.White.copy(
                             alpha =
-                                1f *
-                                    alpha
+                                alpha
                         ),
                         Color.White.copy(
                             alpha =
@@ -1580,9 +1734,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * ============================================================
-     * CRUZ DE ENERGÍA VERTICAL
-     * ============================================================
+     * Línea vertical.
      */
 
     drawLine(
@@ -1614,9 +1766,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * ============================================================
-     * CRUZ DE ENERGÍA HORIZONTAL
-     * ============================================================
+     * Línea horizontal.
      */
 
     drawLine(
@@ -1648,9 +1798,7 @@ private fun DrawScope.drawMainFigure(
     )
 
     /*
-     * ============================================================
-     * BORDE CRISTALINO
-     * ============================================================
+     * Borde.
      */
 
     drawPath(
@@ -1669,88 +1817,6 @@ private fun DrawScope.drawMainFigure(
                         0.018f,
                 join =
                     StrokeJoin.Round
-            )
-    )
-
-    /*
-     * ============================================================
-     * MICRODESTELLOS
-     * ============================================================
-     */
-
-    drawSparkle(
-        center =
-            center +
-                Offset(
-                    0f,
-                    -radius *
-                        0.92f
-                ),
-        radius =
-            radius *
-                0.055f,
-        color =
-            Color.White.copy(
-                alpha =
-                    0.95f *
-                        alpha
-            )
-    )
-
-    drawSparkle(
-        center =
-            center +
-                Offset(
-                    radius *
-                        0.92f,
-                    0f
-                ),
-        radius =
-            radius *
-                0.045f,
-        color =
-            Color.White.copy(
-                alpha =
-                    0.90f *
-                        alpha
-            )
-    )
-
-    drawSparkle(
-        center =
-            center +
-                Offset(
-                    0f,
-                    radius *
-                        0.92f
-                ),
-        radius =
-            radius *
-                0.040f,
-        color =
-            Color.White.copy(
-                alpha =
-                    0.85f *
-                        alpha
-            )
-    )
-
-    drawSparkle(
-        center =
-            center +
-                Offset(
-                    -radius *
-                        0.92f,
-                    0f
-                ),
-        radius =
-            radius *
-                0.045f,
-        color =
-            Color.White.copy(
-                alpha =
-                    0.90f *
-                        alpha
             )
     )
 }
