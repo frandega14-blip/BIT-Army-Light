@@ -47,7 +47,7 @@ fun LightCoreVisualizer(
 
     /*
      * ============================================================
-     * ANIMACIONES
+     * ANIMACIONES GENERALES
      * ============================================================
      */
 
@@ -57,11 +57,11 @@ fun LightCoreVisualizer(
         )
 
     /*
-     * Respiración suave de la figura central.
+     * Respiración muy suave de la figura.
      */
     val breathing by infiniteTransition.animateFloat(
-        initialValue = 0.96f,
-        targetValue = 1.04f,
+        initialValue = 0.97f,
+        targetValue = 1.03f,
         animationSpec =
             infiniteRepeatable(
                 animation =
@@ -75,11 +75,11 @@ fun LightCoreVisualizer(
     )
 
     /*
-     * Pulso visual.
+     * Pulso.
      */
     val pulseAnimation by infiniteTransition.animateFloat(
-        initialValue = 0.82f,
-        targetValue = 1.18f,
+        initialValue = 0.88f,
+        targetValue = 1.12f,
         animationSpec =
             infiniteRepeatable(
                 animation =
@@ -93,25 +93,25 @@ fun LightCoreVisualizer(
     )
 
     /*
-     * Movimiento general del fondo.
+     * Movimiento lento para ondas.
      */
-    val backgroundPhase by infiniteTransition.animateFloat(
+    val wavePhase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec =
             infiniteRepeatable(
                 animation =
                     tween(
-                        durationMillis = 4200,
+                        durationMillis = 3600,
                         easing = FastOutSlowInEasing
                     ),
                 repeatMode = RepeatMode.Restart
             ),
-        label = "backgroundPhase"
+        label = "wave"
     )
 
     /*
-     * Movimiento rápido para Strobe Beat.
+     * Movimiento rápido para Strobe.
      */
     val strobePhase by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -120,16 +120,52 @@ fun LightCoreVisualizer(
             infiniteRepeatable(
                 animation =
                     tween(
-                        durationMillis = 420,
+                        durationMillis = 360,
                         easing = FastOutSlowInEasing
                     ),
                 repeatMode = RepeatMode.Restart
             ),
-        label = "strobePhase"
+        label = "strobe"
     )
 
     /*
-     * Rotación de las órbitas.
+     * Explosión de Supernova.
+     */
+    val supernovaPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec =
+            infiniteRepeatable(
+                animation =
+                    tween(
+                        durationMillis = 1700,
+                        easing = FastOutSlowInEasing
+                    ),
+                repeatMode = RepeatMode.Restart
+            ),
+        label = "supernova"
+    )
+
+    /*
+     * Movimiento de Aurora.
+     */
+    val auroraPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec =
+            infiniteRepeatable(
+                animation =
+                    tween(
+                        durationMillis = 6000,
+                        easing = FastOutSlowInEasing
+                    ),
+                repeatMode = RepeatMode.Reverse
+            ),
+        label = "aurora"
+    )
+
+    /*
+     * Rotación de la órbita.
      */
     val orbitRotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -138,7 +174,7 @@ fun LightCoreVisualizer(
             infiniteRepeatable(
                 animation =
                     tween(
-                        durationMillis = 7000,
+                        durationMillis = 9000,
                         easing = FastOutSlowInEasing
                     ),
                 repeatMode = RepeatMode.Restart
@@ -149,7 +185,7 @@ fun LightCoreVisualizer(
 
     /*
      * ============================================================
-     * VALORES BASE
+     * VALORES
      * ============================================================
      */
 
@@ -166,42 +202,9 @@ fun LightCoreVisualizer(
             1f
         )
 
-    /*
-     * La figura puede respirar o pulsar,
-     * pero NO cambia de color.
-     */
-    val finalScale =
-        (
-            if (isPulseActive) {
-                pulseAnimation
-            } else {
-                breathing
-            }
-        ) *
-        (
-            if (isRhythmActive) {
-                1f + rhythm * 0.18f
-            } else {
-                1f
-            }
-        ) *
-        (
-            0.96f +
-                intensityFactor * 0.04f
-        )
-
-    /*
-     * Color FIJO de la figura.
-     */
-    val figureColor =
-        Color(0xFFF8F2FF)
-
-    val figureSecondary =
-        Color(0xFFE7D2FF)
-
     val baseAlpha =
         if (isBatterySaver) {
-            0.72f
+            0.68f
         } else {
             1f
         }
@@ -209,20 +212,31 @@ fun LightCoreVisualizer(
 
     /*
      * ============================================================
-     * VIBRACIÓN
+     * ESCALA DE LA FIGURA
      * ============================================================
      *
-     * RITMO:
-     *   Vibra cuando se detecta un pico de audio.
-     *
-     * PULSO:
-     *   Vibra siguiendo el ciclo del pulso.
-     *
-     * CONCIERTO:
-     *   Vibra siguiendo el patrón del espectáculo.
-     *
-     * El callback onPeakPulse() ya está protegido por
-     * ArmyLightScreen mediante uiState.isVibrationEnabled.
+     * La figura es GRANDE, como en la imagen de referencia.
+     */
+
+    val figureScale =
+        when {
+
+            isRhythmActive ->
+                1f +
+                    rhythm * 0.10f
+
+            isPulseActive ->
+                pulseAnimation
+
+            else ->
+                breathing
+        }
+
+
+    /*
+     * ============================================================
+     * VIBRACIÓN
+     * ============================================================
      */
 
     var lastPeak by remember {
@@ -231,8 +245,9 @@ fun LightCoreVisualizer(
 
     /*
      * RITMO:
-     * vibración por pico de audio.
+     * vibra cuando aparece un pico real de audio.
      */
+
     LaunchedEffect(
         isRhythmActive,
         rhythmLevel
@@ -258,13 +273,12 @@ fun LightCoreVisualizer(
         }
     }
 
+
     /*
      * PULSO / CONCIERTO:
-     * vibración automática.
-     *
-     * No se ejecuta en Ritmo para evitar que el patrón
-     * automático interfiera con la detección del micrófono.
+     * vibración sincronizada con el efecto visual.
      */
+
     LaunchedEffect(
         isRhythmActive,
         isPulseActive,
@@ -317,71 +331,117 @@ fun LightCoreVisualizer(
 
             val center =
                 Offset(
-                    x = size.width / 2f,
-                    y = size.height * 0.43f
+                    x =
+                        size.width / 2f,
+                    y =
+                        size.height * 0.43f
                 )
-
-            val symbolRadius =
-                size.minDimension * 0.20f
 
 
             /*
              * ====================================================
-             * FONDO DINÁMICO
+             * FONDO BASE
+             * ====================================================
+             */
+
+            drawRect(
+                color =
+                    Color(0xFF070009)
+            )
+
+
+            /*
+             * ====================================================
+             * EFECTOS DE LOS MODOS
              * ====================================================
              *
-             * La figura central permanece estable.
-             * El fondo cambia según el modo.
+             * Cada modo cambia la FORMA de emitir la luz.
+             * No estamos limitando cada modo a un solo color.
              */
 
             when {
 
                 /*
                  * =================================================
-                 * RITMO
+                 * ONDA PÚRPURA
                  * =================================================
+                 *
+                 * La luz se desplaza por la pantalla en ondas.
                  */
 
-                isRhythmActive -> {
+                isConcertActive &&
+                    concertProgram.title.equals(
+                        "Onda Púrpura",
+                        ignoreCase = true
+                    ) -> {
 
-                    val rhythmColor =
-                        mixColor(
-                            Color(0xFF12001F),
-                            Color(0xFF9C27FF),
-                            rhythm
-                        )
+                    val x1 =
+                        -size.width +
+                            size.width *
+                            3f *
+                            wavePhase
 
-                    val rhythmColor2 =
-                        mixColor(
-                            Color(0xFF210033),
-                            Color(0xFFE100FF),
-                            rhythm * 0.85f
-                        )
+                    val x2 =
+                        x1 +
+                            size.width * 0.70f
+
+                    drawRect(
+                        brush =
+                            Brush.linearGradient(
+                                colors =
+                                    listOf(
+                                        Color(0xFF24002F),
+                                        Color(0xFF7B00FF),
+                                        Color(0xFFFF20D4),
+                                        Color(0xFF6A00FF),
+                                        Color(0xFF16001F)
+                                    ),
+                                start =
+                                    Offset(
+                                        x = x1,
+                                        y = 0f
+                                    ),
+                                end =
+                                    Offset(
+                                        x = x2,
+                                        y =
+                                            size.height
+                                    )
+                            )
+                    )
+
+                    /*
+                     * Segunda onda.
+                     */
 
                     drawRect(
                         brush =
                             Brush.radialGradient(
                                 colors =
                                     listOf(
-                                        rhythmColor2.copy(
-                                            alpha =
-                                                (
-                                                    0.35f +
-                                                        rhythm * 0.45f
-                                                ).coerceAtMost(
-                                                    0.85f
-                                                )
+                                        Color(0xFFFF4DE1).copy(
+                                            alpha = 0.42f
                                         ),
-                                        rhythmColor,
-                                        Color(0xFF050008)
+                                        Color(0xFF8A00FF).copy(
+                                            alpha = 0.25f
+                                        ),
+                                        Color.Transparent
                                     ),
-                                center = center,
+                                center =
+                                    Offset(
+                                        x =
+                                            size.width *
+                                                (
+                                                    1f -
+                                                        wavePhase
+                                                ),
+                                        y =
+                                            size.height *
+                                                0.42f
+                                    ),
                                 radius =
                                     size.maxDimension *
-                                        (
-                                            0.65f +
-                                                rhythm * 0.45f
-                                        )
+                                        0.75f
                             )
                     )
                 }
@@ -389,225 +449,307 @@ fun LightCoreVisualizer(
 
                 /*
                  * =================================================
-                 * CONCIERTO
+                 * STROBE BEAT
                  * =================================================
+                 *
+                 * La luz aparece y desaparece rápidamente.
                  */
 
-                isConcertActive -> {
+                isConcertActive &&
+                    concertProgram.title.equals(
+                        "Strobe Beat",
+                        ignoreCase = true
+                    ) -> {
 
-                    when (
-                        concertProgram.title.lowercase()
-                    ) {
+                    val flash =
+                        strobePhase < 0.18f
 
-                        /*
-                         * ONDA PÚRPURA
-                         */
-                        "onda púrpura" -> {
+                    if (flash) {
 
-                            val wave =
-                                backgroundPhase
+                        drawRect(
+                            color =
+                                Color.White
+                        )
 
-                            val purple =
-                                Color(0xFF7B00FF)
+                    } else {
 
-                            val magenta =
-                                Color(0xFFD000FF)
-
-                            val blue =
-                                Color(0xFF3B5BFF)
-
-                            drawRect(
-                                brush =
-                                    Brush.linearGradient(
-                                        colors =
-                                            if (
-                                                wave < 0.5f
-                                            ) {
-                                                listOf(
-                                                    purple,
-                                                    magenta,
-                                                    blue,
-                                                    purple
-                                                )
-                                            } else {
-                                                listOf(
-                                                    blue,
-                                                    purple,
-                                                    magenta,
-                                                    blue
-                                                )
-                                            },
-                                        start =
-                                            Offset(
-                                                x =
-                                                    size.width *
-                                                        wave,
-                                                y = 0f
-                                            ),
-                                        end =
-                                            Offset(
-                                                x =
-                                                    size.width *
-                                                        (
-                                                            1f -
-                                                                wave
-                                                        ),
-                                                y =
-                                                    size.height
-                                            )
-                                    )
-                            )
-                        }
-
-
-                        /*
-                         * STROBE BEAT
-                         */
-                        "strobe beat" -> {
-
-                            val flash =
-                                strobePhase < 0.22f
-
-                            val color =
-                                if (flash) {
-                                    Color.White
-                                } else {
-                                    Color(0xFF6500FF)
-                                }
-
-                            drawRect(
-                                color =
-                                    color
-                            )
-
-                            if (!flash) {
-
-                                drawRect(
-                                    brush =
-                                        Brush.radialGradient(
-                                            colors =
-                                                listOf(
-                                                    Color(
-                                                        0xFFE000FF
-                                                    ).copy(
-                                                        alpha =
-                                                            0.55f
-                                                    ),
-                                                    Color.Transparent
-                                                ),
-                                            center =
-                                                center,
-                                            radius =
-                                                size.maxDimension *
-                                                    0.75f
-                                        )
+                        drawRect(
+                            brush =
+                                Brush.radialGradient(
+                                    colors =
+                                        listOf(
+                                            Color(0xFFF0C8FF),
+                                            Color(0xFF7D00FF),
+                                            Color(0xFF15001F)
+                                        ),
+                                    center =
+                                        center,
+                                    radius =
+                                        size.maxDimension *
+                                            0.90f
                                 )
-                            }
-                        }
-
-
-                        /*
-                         * SUPERNOVA
-                         */
-                        "supernova" -> {
-
-                            val phase =
-                                backgroundPhase
-
-                            val explosion =
-                                (
-                                    sin(
-                                        phase *
-                                            Math.PI *
-                                            2.0
-                                    ) *
-                                    0.5 +
-                                    0.5
-                                ).toFloat()
-
-                            drawRect(
-                                brush =
-                                    Brush.radialGradient(
-                                        colors =
-                                            listOf(
-                                                Color.White.copy(
-                                                    alpha =
-                                                        0.35f +
-                                                            explosion *
-                                                            0.45f
-                                                ),
-                                                Color(0xFFB000FF).copy(
-                                                    alpha =
-                                                        0.65f
-                                                ),
-                                                Color(0xFF33005A),
-                                                Color(0xFF050008)
-                                            ),
-                                        center =
-                                            center,
-                                        radius =
-                                            size.maxDimension *
-                                                (
-                                                    0.45f +
-                                                        explosion *
-                                                        0.65f
-                                                )
-                                    )
-                            )
-                        }
-
-
-                        /*
-                         * AURORA
-                         */
-                        "aurora" -> {
-
-                            val phase =
-                                backgroundPhase
-
-                            drawRect(
-                                brush =
-                                    Brush.linearGradient(
-                                        colors =
-                                            listOf(
-                                                Color(0xFF24005A),
-                                                Color(0xFF6A00A8),
-                                                Color(0xFF008CFF),
-                                                Color(0xFF00D4A8),
-                                                Color(0xFF6A00A8),
-                                                Color(0xFF24005A)
-                                            ),
-                                        start =
-                                            Offset(
-                                                x =
-                                                    -size.width +
-                                                        size.width *
-                                                        3f *
-                                                        phase,
-                                                y = 0f
-                                            ),
-                                        end =
-                                            Offset(
-                                                x =
-                                                    size.width *
-                                                        3f *
-                                                        phase,
-                                                y =
-                                                    size.height
-                                            )
-                                    )
-                            )
-                        }
-
-
-                        else -> {
-
-                            drawRect(
-                                color =
-                                    Color(0xFF250035)
-                            )
-                        }
+                        )
                     }
+                }
+
+
+                /*
+                 * =================================================
+                 * SUPERNOVA
+                 * =================================================
+                 *
+                 * La luz nace en el centro y explota hacia afuera.
+                 */
+
+                isConcertActive &&
+                    concertProgram.title.equals(
+                        "Supernova",
+                        ignoreCase = true
+                    ) -> {
+
+                    val explosion =
+                        supernovaPhase
+
+                    val radius =
+                        size.maxDimension *
+                            (
+                                0.12f +
+                                    explosion *
+                                    1.05f
+                            )
+
+                    drawCircle(
+                        brush =
+                            Brush.radialGradient(
+                                colors =
+                                    listOf(
+                                        Color.White.copy(
+                                            alpha =
+                                                0.85f
+                                        ),
+                                        Color(0xFFFFB7FF).copy(
+                                            alpha =
+                                                0.65f
+                                        ),
+                                        Color(0xFFB000FF).copy(
+                                            alpha =
+                                                0.45f
+                                        ),
+                                        Color(0xFF3A004F).copy(
+                                            alpha =
+                                                0.20f
+                                        ),
+                                        Color.Transparent
+                                    ),
+                                center =
+                                    center,
+                                radius =
+                                    radius
+                            ),
+                        center =
+                            center,
+                        radius =
+                            radius
+                    )
+
+                    /*
+                     * Segundo anillo de expansión.
+                     */
+
+                    val ringRadius =
+                        size.maxDimension *
+                            (
+                                0.25f +
+                                    explosion *
+                                    0.90f
+                            )
+
+                    drawCircle(
+                        color =
+                            Color.White.copy(
+                                alpha =
+                                    (
+                                        1f -
+                                            explosion
+                                    ).coerceIn(
+                                        0f,
+                                        1f
+                                    ) *
+                                    0.45f
+                            ),
+                        center =
+                            center,
+                        radius =
+                            ringRadius,
+                        style =
+                            Stroke(
+                                width =
+                                    12.dp.toPx()
+                            )
+                    )
+                }
+
+
+                /*
+                 * =================================================
+                 * AURORA
+                 * =================================================
+                 *
+                 * Capas de luz lentas y fluidas.
+                 */
+
+                isConcertActive &&
+                    concertProgram.title.equals(
+                        "Aurora",
+                        ignoreCase = true
+                    ) -> {
+
+                    val phase =
+                        auroraPhase
+
+                    /*
+                     * Primera cortina.
+                     */
+
+                    drawRect(
+                        brush =
+                            Brush.linearGradient(
+                                colors =
+                                    listOf(
+                                        Color(0xFF17002C),
+                                        Color(0xFF6C00A8),
+                                        Color(0xFF00A6FF),
+                                        Color(0xFF00E6B8),
+                                        Color(0xFF6C00A8),
+                                        Color(0xFF17002C)
+                                    ),
+                                start =
+                                    Offset(
+                                        x =
+                                            -size.width +
+                                                size.width *
+                                                2f *
+                                                phase,
+                                        y = 0f
+                                    ),
+                                end =
+                                    Offset(
+                                        x =
+                                            size.width *
+                                                2f *
+                                                phase,
+                                        y =
+                                            size.height
+                                    )
+                            )
+                    )
+
+                    /*
+                     * Segunda cortina.
+                     */
+
+                    drawCircle(
+                        brush =
+                            Brush.radialGradient(
+                                colors =
+                                    listOf(
+                                        Color(0xFF00E5FF).copy(
+                                            alpha =
+                                                0.32f
+                                        ),
+                                        Color(0xFF7A00FF).copy(
+                                            alpha =
+                                                0.25f
+                                        ),
+                                        Color.Transparent
+                                    ),
+                                center =
+                                    Offset(
+                                        x =
+                                            size.width *
+                                                (
+                                                    0.25f +
+                                                        phase *
+                                                        0.5f
+                                                ),
+                                        y =
+                                            size.height *
+                                                0.38f
+                                    ),
+                                radius =
+                                    size.maxDimension *
+                                        0.72f
+                            ),
+                        center =
+                            Offset(
+                                x =
+                                    size.width *
+                                        (
+                                            0.25f +
+                                                phase *
+                                                0.5f
+                                        ),
+                                y =
+                                    size.height *
+                                        0.38f
+                            ),
+                        radius =
+                            size.maxDimension *
+                                0.72f
+                    )
+                }
+
+
+                /*
+                 * =================================================
+                 * RITMO
+                 * =================================================
+                 *
+                 * El fondo respira y reacciona al sonido.
+                 */
+
+                isRhythmActive -> {
+
+                    val energy =
+                        rhythm.coerceIn(
+                            0f,
+                            1f
+                        )
+
+                    drawRect(
+                        brush =
+                            Brush.radialGradient(
+                                colors =
+                                    listOf(
+                                        Color.White.copy(
+                                            alpha =
+                                                0.12f +
+                                                    energy *
+                                                    0.30f
+                                        ),
+                                        Color(0xFFD000FF).copy(
+                                            alpha =
+                                                0.35f +
+                                                    energy *
+                                                    0.25f
+                                        ),
+                                        Color(0xFF31004A).copy(
+                                            alpha =
+                                                0.75f
+                                        ),
+                                        Color(0xFF050008)
+                                    ),
+                                center =
+                                    center,
+                                radius =
+                                    size.maxDimension *
+                                        (
+                                            0.40f +
+                                                energy *
+                                                0.80f
+                                        )
+                            )
+                    )
                 }
 
 
@@ -615,39 +757,37 @@ fun LightCoreVisualizer(
                  * =================================================
                  * PULSO
                  * =================================================
+                 *
+                 * Expansión y contracción desde el centro.
                  */
 
                 isPulseActive -> {
 
-                    val pulseAmount =
+                    val amount =
                         (
                             pulseAnimation -
-                                0.82f
+                                0.88f
                         ) /
-                        (
-                            1.18f -
-                                0.82f
-                        )
-
-                    val pulseColor =
-                        mixColor(
-                            Color(0xFF26003D),
-                            Color(0xFFB000FF),
-                            pulseAmount
-                        )
+                        0.24f
 
                     drawRect(
                         brush =
                             Brush.radialGradient(
                                 colors =
                                     listOf(
-                                        Color(0xFFE9B8FF).copy(
+                                        Color.White.copy(
                                             alpha =
-                                                0.20f +
-                                                    pulseAmount *
-                                                    0.45f
+                                                0.10f +
+                                                    amount *
+                                                    0.25f
                                         ),
-                                        pulseColor,
+                                        Color(0xFFD600FF).copy(
+                                            alpha =
+                                                0.40f +
+                                                    amount *
+                                                    0.25f
+                                        ),
+                                        Color(0xFF4A0066),
                                         Color(0xFF050008)
                                     ),
                                 center =
@@ -655,37 +795,10 @@ fun LightCoreVisualizer(
                                 radius =
                                     size.maxDimension *
                                         (
-                                            0.60f +
-                                                pulseAmount *
-                                                0.35f
+                                            0.45f +
+                                                amount *
+                                                0.50f
                                         )
-                            )
-                    )
-                }
-
-
-                /*
-                 * =================================================
-                 * ESTADO NORMAL
-                 * =================================================
-                 */
-
-                else -> {
-
-                    drawRect(
-                        brush =
-                            Brush.radialGradient(
-                                colors =
-                                    listOf(
-                                        Color(0xFF2A003D),
-                                        Color(0xFF100018),
-                                        Color(0xFF050008)
-                                    ),
-                                center =
-                                    center,
-                                radius =
-                                    size.maxDimension *
-                                        0.72f
                             )
                     )
                 }
@@ -694,46 +807,7 @@ fun LightCoreVisualizer(
 
             /*
              * ====================================================
-             * HALO DE LA FIGURA
-             * ====================================================
-             */
-
-            drawCircle(
-                brush =
-                    Brush.radialGradient(
-                        colors =
-                            listOf(
-                                figureColor.copy(
-                                    alpha =
-                                        0.30f *
-                                            baseAlpha
-                                ),
-                                figureSecondary.copy(
-                                    alpha =
-                                        0.16f *
-                                            baseAlpha
-                                ),
-                                Color.Transparent
-                            ),
-                        center =
-                            center,
-                        radius =
-                            symbolRadius *
-                                2.35f *
-                                finalScale
-                    ),
-                center =
-                    center,
-                radius =
-                    symbolRadius *
-                        2.35f *
-                        finalScale
-            )
-
-
-            /*
-             * ====================================================
-             * HALO INTERIOR
+             * HALO PRINCIPAL DE LA FIGURA
              * ====================================================
              */
 
@@ -744,12 +818,17 @@ fun LightCoreVisualizer(
                             listOf(
                                 Color.White.copy(
                                     alpha =
-                                        0.25f *
+                                        0.28f *
                                             baseAlpha
                                 ),
-                                figureSecondary.copy(
+                                Color(0xFFE5B5FF).copy(
                                     alpha =
-                                        0.18f *
+                                        0.22f *
+                                            baseAlpha
+                                ),
+                                Color(0xFFA000FF).copy(
+                                    alpha =
+                                        0.12f *
                                             baseAlpha
                                 ),
                                 Color.Transparent
@@ -757,94 +836,76 @@ fun LightCoreVisualizer(
                         center =
                             center,
                         radius =
-                            symbolRadius *
-                                1.45f *
-                                finalScale
+                            size.minDimension *
+                                0.38f *
+                                figureScale
                     ),
                 center =
                     center,
                 radius =
-                    symbolRadius *
-                        1.45f *
-                        finalScale
+                    size.minDimension *
+                        0.38f *
+                        figureScale
             )
 
 
             /*
              * ====================================================
-             * ÓRBITA PRINCIPAL
+             * ÓRBITA
              * ====================================================
+             *
+             * La órbita de la imagen de referencia es grande,
+             * gruesa y claramente visible.
              */
 
             drawOrbit(
                 center =
                     center,
                 radiusX =
-                    symbolRadius *
-                        1.62f *
-                        finalScale,
+                    size.minDimension *
+                        0.40f *
+                        figureScale,
                 radiusY =
-                    symbolRadius *
-                        0.62f *
-                        finalScale,
+                    size.minDimension *
+                        0.155f *
+                        figureScale,
                 rotationDegrees =
                     -18f +
-                        orbitRotation * 0.02f,
+                        orbitRotation *
+                        0.015f,
                 color =
                     Color.White.copy(
                         alpha =
-                            0.90f *
+                            0.96f *
                                 baseAlpha
-                    )
+                    ),
+                strokeWidth =
+                    size.minDimension *
+                        0.022f
             )
 
 
             /*
              * ====================================================
-             * SEGUNDA ÓRBITA
-             * ====================================================
-             */
-
-            drawOrbit(
-                center =
-                    center,
-                radiusX =
-                    symbolRadius *
-                        1.45f *
-                        finalScale,
-                radiusY =
-                    symbolRadius *
-                        0.48f *
-                        finalScale,
-                rotationDegrees =
-                    155f +
-                        orbitRotation * 0.015f,
-                color =
-                    figureSecondary.copy(
-                        alpha =
-                            0.48f *
-                                baseAlpha
-                    )
-            )
-
-
-            /*
-             * ====================================================
-             * FIGURA CENTRAL
+             * FIGURA PRINCIPAL
              * ====================================================
              *
-             * BLANCA/LAVANDA.
-             * NO CAMBIA CON EL COLOR DEL FONDO.
+             * ESTA ES LA PARTE IMPORTANTE.
+             *
+             * No usamos un simple rombo de líneas rectas.
+             *
+             * Se dibuja una estrella de cuatro puntas con
+             * lados CURVOS para acercarse a la figura de la
+             * imagen de referencia.
              */
 
-            drawFourPointStar(
+            drawMainDiamond(
                 center =
                     center,
                 radius =
-                    symbolRadius *
-                        finalScale,
-                color =
-                    figureColor,
+                    size.minDimension *
+                        0.245f *
+                        figureScale,
                 alpha =
                     baseAlpha
             )
@@ -852,7 +913,7 @@ fun LightCoreVisualizer(
 
             /*
              * ====================================================
-             * CENTRO
+             * BRILLO CENTRAL
              * ====================================================
              */
 
@@ -866,9 +927,9 @@ fun LightCoreVisualizer(
                 center =
                     center,
                 radius =
-                    symbolRadius *
-                        0.12f *
-                        finalScale
+                    size.minDimension *
+                        0.018f *
+                        figureScale
             )
 
 
@@ -883,18 +944,18 @@ fun LightCoreVisualizer(
                     center +
                         Offset(
                             x =
-                                -symbolRadius *
-                                    1.15f *
-                                    finalScale,
+                                -size.minDimension *
+                                    0.205f *
+                                    figureScale,
                             y =
-                                -symbolRadius *
-                                    0.85f *
-                                    finalScale
+                                -size.minDimension *
+                                    0.17f *
+                                    figureScale
                         ),
                 radius =
-                    symbolRadius *
-                        0.22f *
-                        finalScale,
+                    size.minDimension *
+                        0.035f *
+                        figureScale,
                 color =
                     Color.White.copy(
                         alpha =
@@ -908,18 +969,43 @@ fun LightCoreVisualizer(
                     center +
                         Offset(
                             x =
-                                symbolRadius *
-                                    1.15f *
-                                    finalScale,
+                                size.minDimension *
+                                    0.205f *
+                                    figureScale,
                             y =
-                                -symbolRadius *
-                                    0.65f *
-                                    finalScale
+                                -size.minDimension *
+                                    0.185f *
+                                    figureScale
                         ),
                 radius =
-                    symbolRadius *
-                        0.17f *
-                        finalScale,
+                    size.minDimension *
+                        0.030f *
+                        figureScale,
+                color =
+                    Color.White.copy(
+                        alpha =
+                            0.92f *
+                                baseAlpha
+                    )
+            )
+
+            drawSparkle(
+                center =
+                    center +
+                        Offset(
+                            x =
+                                size.minDimension *
+                                    0.235f *
+                                    figureScale,
+                            y =
+                                size.minDimension *
+                                    0.18f *
+                                    figureScale
+                        ),
+                radius =
+                    size.minDimension *
+                        0.027f *
+                        figureScale,
                 color =
                     Color.White.copy(
                         alpha =
@@ -933,47 +1019,22 @@ fun LightCoreVisualizer(
                     center +
                         Offset(
                             x =
-                                symbolRadius *
-                                    1.10f *
-                                    finalScale,
+                                -size.minDimension *
+                                    0.20f *
+                                    figureScale,
                             y =
-                                symbolRadius *
-                                    0.95f *
-                                    finalScale
+                                size.minDimension *
+                                    0.22f *
+                                    figureScale
                         ),
                 radius =
-                    symbolRadius *
-                        0.15f *
-                        finalScale,
-                color =
-                    figureSecondary.copy(
-                        alpha =
-                            0.90f *
-                                baseAlpha
-                    )
-            )
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            x =
-                                -symbolRadius *
-                                    1.05f *
-                                    finalScale,
-                            y =
-                                symbolRadius *
-                                    0.85f *
-                                    finalScale
-                        ),
-                radius =
-                    symbolRadius *
-                        0.12f *
-                        finalScale,
+                    size.minDimension *
+                        0.021f *
+                        figureScale,
                 color =
                     Color.White.copy(
                         alpha =
-                            0.85f *
+                            0.88f *
                                 baseAlpha
                     )
             )
@@ -990,14 +1051,9 @@ fun LightCoreVisualizer(
                 rhythm > 0.35f
             ) {
 
-                val extraAlpha =
-                    (
-                        rhythm *
-                            0.85f
-                    ).coerceIn(
-                        0f,
-                        0.85f
-                    )
+                val extra =
+                    rhythm *
+                        0.9f
 
                 drawSparkle(
                     center =
@@ -1005,21 +1061,21 @@ fun LightCoreVisualizer(
                             Offset(
                                 x = 0f,
                                 y =
-                                    -symbolRadius *
-                                        1.45f *
-                                        finalScale
+                                    -size.minDimension *
+                                        0.31f *
+                                        figureScale
                             ),
                     radius =
-                        symbolRadius *
+                        size.minDimension *
                             (
-                                0.10f +
-                                    rhythm * 0.12f
-                            ) *
-                            finalScale,
+                                0.018f +
+                                    rhythm *
+                                    0.025f
+                            ),
                     color =
                         Color.White.copy(
                             alpha =
-                                extraAlpha
+                                extra
                         )
                 )
 
@@ -1029,21 +1085,21 @@ fun LightCoreVisualizer(
                             Offset(
                                 x = 0f,
                                 y =
-                                    symbolRadius *
-                                        1.45f *
-                                        finalScale
+                                    size.minDimension *
+                                        0.31f *
+                                        figureScale
                             ),
                     radius =
-                        symbolRadius *
+                        size.minDimension *
                             (
-                                0.08f +
-                                    rhythm * 0.10f
-                            ) *
-                            finalScale,
+                                0.015f +
+                                    rhythm *
+                                    0.022f
+                            ),
                     color =
-                        figureSecondary.copy(
+                        Color.White.copy(
                             alpha =
-                                extraAlpha
+                                extra
                         )
                 )
             }
@@ -1054,70 +1110,163 @@ fun LightCoreVisualizer(
 
 /*
  * ================================================================
- * ESTRELLA CENTRAL
+ * FIGURA PRINCIPAL
  * ================================================================
+ *
+ * ESTRELLA / ROMBO DE CUATRO PUNTAS.
+ *
+ * Los cuatro lados son CURVOS, no rectos.
+ *
+ * El degradado intenta reproducir la referencia:
+ *
+ *     blanco
+ *       ↓
+ *   lavanda
+ *       ↓
+ *    violeta
+ *
+ * El núcleo permanece luminoso.
  */
 
-private fun DrawScope.drawFourPointStar(
+private fun DrawScope.drawMainDiamond(
     center: Offset,
     radius: Float,
-    color: Color,
     alpha: Float
 ) {
-
-    val outerRadius =
-        radius
-
-    val innerRadius =
-        radius * 0.16f
 
     val path =
         Path()
 
-    for (i in 0 until 8) {
+    val top =
+        Offset(
+            center.x,
+            center.y -
+                radius
+        )
 
-        val angle =
-            (-90f + i * 45f)
-                .toRadians()
-
-        val currentRadius =
-            if (i % 2 == 0) {
-                outerRadius
-            } else {
-                innerRadius
-            }
-
-        val x =
+    val right =
+        Offset(
             center.x +
-                cos(angle) *
-                    currentRadius
+                radius,
+            center.y
+        )
 
-        val y =
+    val bottom =
+        Offset(
+            center.x,
             center.y +
-                sin(angle) *
-                    currentRadius
+                radius
+        )
 
-        if (i == 0) {
+    val left =
+        Offset(
+            center.x -
+                radius,
+            center.y
+        )
 
-            path.moveTo(
-                x.toFloat(),
-                y.toFloat()
-            )
 
-        } else {
+    /*
+     * ============================================================
+     * PUNTA SUPERIOR → DERECHA
+     * ============================================================
+     *
+     * Curva hacia el centro.
+     */
 
-            path.lineTo(
-                x.toFloat(),
-                y.toFloat()
-            )
-        }
-    }
+    path.moveTo(
+        top.x,
+        top.y
+    )
+
+    path.cubicTo(
+        center.x +
+            radius * 0.18f,
+        center.y -
+            radius * 0.46f,
+
+        center.x +
+            radius * 0.22f,
+        center.y -
+            radius * 0.12f,
+
+        right.x,
+        right.y
+    )
+
+
+    /*
+     * ============================================================
+     * DERECHA → ABAJO
+     * ============================================================
+     */
+
+    path.cubicTo(
+        center.x +
+            radius * 0.46f,
+        center.y +
+            radius * 0.18f,
+
+        center.x +
+            radius * 0.18f,
+        center.y +
+            radius * 0.22f,
+
+        bottom.x,
+        bottom.y
+    )
+
+
+    /*
+     * ============================================================
+     * ABAJO → IZQUIERDA
+     * ============================================================
+     */
+
+    path.cubicTo(
+        center.x -
+            radius * 0.18f,
+        center.y +
+            radius * 0.46f,
+
+        center.x -
+            radius * 0.22f,
+        center.y +
+            radius * 0.12f,
+
+        left.x,
+        left.y
+    )
+
+
+    /*
+     * ============================================================
+     * IZQUIERDA → ARRIBA
+     * ============================================================
+     */
+
+    path.cubicTo(
+        center.x -
+            radius * 0.46f,
+        center.y -
+            radius * 0.18f,
+
+        center.x -
+            radius * 0.18f,
+        center.y -
+            radius * 0.22f,
+
+        top.x,
+        top.y
+    )
 
     path.close()
 
 
     /*
-     * Resplandor exterior.
+     * ============================================================
+     * RESPLANDOR EXTERIOR
+     * ============================================================
      */
 
     drawPath(
@@ -1126,13 +1275,14 @@ private fun DrawScope.drawFourPointStar(
         color =
             Color.White.copy(
                 alpha =
-                    0.28f *
+                    0.32f *
                         alpha
             ),
         style =
             Stroke(
                 width =
-                    radius * 0.16f,
+                    radius *
+                        0.15f,
                 join =
                     StrokeJoin.Round
             )
@@ -1140,7 +1290,15 @@ private fun DrawScope.drawFourPointStar(
 
 
     /*
-     * Cuerpo principal.
+     * ============================================================
+     * CUERPO PRINCIPAL
+     * ============================================================
+     *
+     * Degradado diagonal:
+     *
+     * arriba-izquierda = blanco
+     * centro            = lavanda
+     * abajo-derecha     = violeta
      */
 
     drawPath(
@@ -1155,12 +1313,20 @@ private fun DrawScope.drawFourPointStar(
                                 0.99f *
                                     alpha
                         ),
-                        color.copy(
+
+                        Color(0xFFF0DFFF).copy(
+                            alpha =
+                                0.99f *
+                                    alpha
+                        ),
+
+                        Color(0xFFB97CFF).copy(
                             alpha =
                                 0.98f *
                                     alpha
                         ),
-                        Color(0xFFD9B8FF).copy(
+
+                        Color(0xFF6E35FF).copy(
                             alpha =
                                 0.98f *
                                     alpha
@@ -1182,6 +1348,104 @@ private fun DrawScope.drawFourPointStar(
                     )
             )
     )
+
+
+    /*
+     * ============================================================
+     * CRUZ LUMINOSA INTERIOR
+     * ============================================================
+     *
+     * Reproduce la división luminosa que se ve en la referencia.
+     */
+
+    drawLine(
+        color =
+            Color.White.copy(
+                alpha =
+                    0.82f *
+                        alpha
+            ),
+        start =
+            Offset(
+                center.x,
+                center.y -
+                    radius *
+                    0.72f
+            ),
+        end =
+            Offset(
+                center.x,
+                center.y +
+                    radius *
+                    0.72f
+            ),
+        strokeWidth =
+            radius *
+                0.025f
+    )
+
+    drawLine(
+        color =
+            Color.White.copy(
+                alpha =
+                    0.68f *
+                        alpha
+            ),
+        start =
+            Offset(
+                center.x -
+                    radius *
+                    0.72f,
+                center.y
+            ),
+        end =
+            Offset(
+                center.x +
+                    radius *
+                    0.72f,
+                center.y
+            ),
+        strokeWidth =
+            radius *
+                0.020f
+    )
+
+
+    /*
+     * ============================================================
+     * BRILLO DEL CENTRO
+     * ============================================================
+     */
+
+    drawCircle(
+        brush =
+            Brush.radialGradient(
+                colors =
+                    listOf(
+                        Color.White.copy(
+                            alpha =
+                                0.75f *
+                                    alpha
+                        ),
+                        Color.White.copy(
+                            alpha =
+                                0.18f *
+                                    alpha
+                        ),
+                        Color.Transparent
+                    ),
+                center =
+                    center,
+                radius =
+                    radius *
+                        0.32f
+            ),
+        center =
+            center,
+        radius =
+            radius *
+                0.32f
+    )
 }
 
 
@@ -1189,12 +1453,6 @@ private fun DrawScope.drawFourPointStar(
  * ================================================================
  * ÓRBITA
  * ================================================================
- *
- * CORRECCIÓN:
- * No se utilizan rotation/center dentro de drawOval().
- *
- * Se utiliza rotate { drawOval(...) }, que sí es compatible
- * con la API de Compose utilizada por el proyecto.
  */
 
 private fun DrawScope.drawOrbit(
@@ -1202,7 +1460,8 @@ private fun DrawScope.drawOrbit(
     radiusX: Float,
     radiusY: Float,
     rotationDegrees: Float,
-    color: Color
+    color: Color,
+    strokeWidth: Float
 ) {
 
     rotate(
@@ -1230,7 +1489,7 @@ private fun DrawScope.drawOrbit(
             style =
                 Stroke(
                     width =
-                        5.dp.toPx(),
+                        strokeWidth,
                     cap =
                         StrokeCap.Round
                 )
@@ -1258,7 +1517,8 @@ private fun DrawScope.drawSparkle(
         radius
 
     val shortRadius =
-        radius * 0.18f
+        radius *
+            0.18f
 
     path.moveTo(
         center.x,
@@ -1320,68 +1580,4 @@ private fun DrawScope.drawSparkle(
         color =
             color
     )
-}
-
-
-/*
- * ================================================================
- * MEZCLA DE COLORES
- * ================================================================
- */
-
-private fun mixColor(
-    start: Color,
-    end: Color,
-    amount: Float
-): Color {
-
-    val t =
-        amount.coerceIn(
-            0f,
-            1f
-        )
-
-    return Color(
-        red =
-            start.red +
-                (
-                    end.red -
-                        start.red
-                ) * t,
-
-        green =
-            start.green +
-                (
-                    end.green -
-                        start.green
-                ) * t,
-
-        blue =
-            start.blue +
-                (
-                    end.blue -
-                        start.blue
-                ) * t,
-
-        alpha =
-            start.alpha +
-                (
-                    end.alpha -
-                        start.alpha
-                ) * t
-    )
-}
-
-
-/*
- * ================================================================
- * GRADOS → RADIANES
- * ================================================================
- */
-
-private fun Float.toRadians(): Double {
-
-    return this *
-        Math.PI /
-        180.0
 }
