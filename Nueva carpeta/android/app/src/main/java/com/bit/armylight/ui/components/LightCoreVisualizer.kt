@@ -17,18 +17,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import com.bit.armylight.R
 import com.bit.armylight.viewmodel.ConcertProgram
 import com.bit.armylight.viewmodel.LightIntensity
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 
 @Composable
@@ -43,9 +45,23 @@ fun LightCoreVisualizer(
     onPeakPulse: () -> Unit
 ) {
 
-    val transition =
-        rememberInfiniteTransition(
-            label = "BIT-Light"
+    /*
+     * ============================================================
+     * IMAGEN CENTRAL
+     * ============================================================
+     *
+     * Archivo:
+     *
+     * res/drawable-nodpi/bit_premium_center_emblem.png
+     *
+     * Se carga como ImageBitmap para poder dibujarla dentro
+     * del Canvas.
+     */
+
+    val premiumEmblem =
+        ImageBitmap.imageResource(
+            id =
+                R.drawable.bit_premium_center_emblem
         )
 
     /*
@@ -53,6 +69,11 @@ fun LightCoreVisualizer(
      * ANIMACIONES
      * ============================================================
      */
+
+    val transition =
+        rememberInfiniteTransition(
+            label = "BIT-Light"
+        )
 
     val breathing by transition.animateFloat(
         initialValue = 0.985f,
@@ -166,6 +187,12 @@ fun LightCoreVisualizer(
         label = "aurora"
     )
 
+    /*
+     * ============================================================
+     * CONTROL DE LUZ
+     * ============================================================
+     */
+
     val orbit by transition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -216,7 +243,7 @@ fun LightCoreVisualizer(
 
     /*
      * ============================================================
-     * ALPHA
+     * ALPHA GENERAL
      * ============================================================
      */
 
@@ -229,11 +256,11 @@ fun LightCoreVisualizer(
 
     /*
      * ============================================================
-     * ESCALA DE FIGURA
+     * ESCALA
      * ============================================================
      */
 
-    val figureScale =
+    val emblemScale =
         when {
 
             isPulseActive ->
@@ -324,7 +351,7 @@ fun LightCoreVisualizer(
 
     /*
      * ============================================================
-     * PANTALLA
+     * INTERFAZ
      * ============================================================
      */
 
@@ -351,7 +378,7 @@ fun LightCoreVisualizer(
 
             /*
              * ====================================================
-             * FONDO
+             * FONDO BASE
              * ====================================================
              */
 
@@ -1032,18 +1059,17 @@ fun LightCoreVisualizer(
 
             /*
              * ====================================================
-             * FIGURA CENTRAL
+             * HALO DETRÁS DEL EMBLEMA
              * ====================================================
              */
 
-            val figureRadius =
+            val haloRadius =
                 minDimension *
-                    0.245f *
-                    figureScale
-
-            /*
-             * Halo principal.
-             */
+                    (
+                        0.32f +
+                            rhythmVisual *
+                            0.18f
+                    )
 
             drawCircle(
                 brush =
@@ -1052,17 +1078,17 @@ fun LightCoreVisualizer(
                             listOf(
                                 Color.White.copy(
                                     alpha =
-                                        0.30f *
+                                        0.12f *
                                             alpha
                                 ),
-                                Color(0xFFE8B8FF).copy(
+                                Color(0xFFE0A0FF).copy(
                                     alpha =
-                                        0.20f *
+                                        0.16f *
                                             alpha
                                 ),
-                                Color(0xFF9E36FF).copy(
+                                Color(0xFF8C24FF).copy(
                                     alpha =
-                                        0.08f *
+                                        0.12f *
                                             alpha
                                 ),
                                 Color.Transparent
@@ -1070,316 +1096,112 @@ fun LightCoreVisualizer(
                         center =
                             center,
                         radius =
-                            figureRadius *
-                                1.95f
+                            haloRadius
                     ),
                 center =
                     center,
                 radius =
-                    figureRadius *
-                        1.95f
+                    haloRadius
             )
 
             /*
-             * Halo secundario.
+             * ====================================================
+             * EMBLEMA PREMIUM
+             * ====================================================
+             *
+             * Screen hace que el fondo negro de la imagen no
+             * tape los efectos que están detrás.
              */
 
-            drawCircle(
-                color =
-                    Color(0xFF9D32FF).copy(
-                        alpha =
-                            0.12f *
-                                alpha
+            val baseEmblemWidth =
+                minDimension *
+                    0.76f
+
+            val aspectRatio =
+                premiumEmblem.height.toFloat() /
+                    premiumEmblem.width.toFloat()
+
+            val emblemWidth =
+                baseEmblemWidth *
+                    emblemScale
+
+            val emblemHeight =
+                emblemWidth *
+                    aspectRatio
+
+            val emblemLeft =
+                (
+                    size.width -
+                        emblemWidth
+                ) /
+                    2f
+
+            val emblemTop =
+                center.y -
+                    emblemHeight /
+                    2f
+
+            drawImage(
+                image =
+                    premiumEmblem,
+                dstOffset =
+                    IntOffset(
+                        emblemLeft.roundToInt(),
+                        emblemTop.roundToInt()
                     ),
-                center =
-                    center,
-                radius =
-                    figureRadius *
-                        1.42f
-            )
-
-            /*
-             * ÓRBITA TRASERA
-             */
-
-            drawOrbit(
-                center =
-                    center,
-                radiusX =
-                    figureRadius *
-                        1.62f,
-                radiusY =
-                    figureRadius *
-                        0.57f,
-                rotationDegrees =
-                    -17f +
-                        orbit *
-                        0.012f,
-                color =
-                    Color.White.copy(
-                        alpha =
-                            0.92f *
-                                alpha
+                dstSize =
+                    IntSize(
+                        emblemWidth.roundToInt(),
+                        emblemHeight.roundToInt()
                     ),
-                strokeWidth =
-                    minDimension *
-                        0.018f
-            )
-
-            /*
-             * SEGUNDA ÓRBITA
-             */
-
-            drawOrbit(
-                center =
-                    center,
-                radiusX =
-                    figureRadius *
-                        1.42f,
-                radiusY =
-                    figureRadius *
-                        0.78f,
-                rotationDegrees =
-                    40f -
-                        orbit *
-                        0.009f,
-                color =
-                    Color(0xFFB96BFF).copy(
-                        alpha =
-                            0.34f *
-                                alpha
-                    ),
-                strokeWidth =
-                    minDimension *
-                        0.006f
-            )
-
-            /*
-             * FIGURA
-             */
-
-            val rhythmFigureAlpha =
-                if (isRhythmActive) {
-
-                    (
-                        alpha *
-                            (
-                                0.72f +
-                                    rhythmVisual *
-                                    0.28f
-                            )
-                    ).coerceIn(
-                        0f,
-                        1f
-                    )
-
-                } else {
-                    alpha
-                }
-
-            drawMainFigure(
-                center =
-                    center,
-                radius =
-                    figureRadius,
                 alpha =
-                    rhythmFigureAlpha
+                    alpha,
+                blendMode =
+                    BlendMode.Screen
             )
 
             /*
-             * ÓRBITA DELANTERA
+             * ====================================================
+             * DESTELLOS EXTRA DE LA APP
+             * ====================================================
              */
 
-            drawOrbit(
+            drawSparkle(
                 center =
-                    center,
-                radiusX =
-                    figureRadius *
-                        1.62f,
-                radiusY =
-                    figureRadius *
-                        0.57f,
-                rotationDegrees =
-                    -17f +
-                        orbit *
-                        0.012f,
-                color =
-                    Color.White.copy(
-                        alpha =
-                            0.72f *
-                                alpha
-                    ),
-                strokeWidth =
+                    center +
+                        Offset(
+                            -minDimension *
+                                0.27f,
+                            -minDimension *
+                                0.24f
+                        ),
+                radius =
                     minDimension *
-                        0.006f
-            )
-
-            /*
-             * ====================================================
-             * DESTELLOS
-             * ====================================================
-             */
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            -figureRadius *
-                                0.92f,
-                            -figureRadius *
-                                0.80f
-                        ),
-                radius =
-                    figureRadius *
-                        0.14f,
-                color =
-                    Color.White.copy(
-                        alpha =
-                            0.95f *
-                                alpha
-                    )
-            )
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            figureRadius *
-                                0.95f,
-                            -figureRadius *
-                                0.68f
-                        ),
-                radius =
-                    figureRadius *
-                        0.105f,
-                color =
-                    Color.White.copy(
-                        alpha =
-                            0.90f *
-                                alpha
-                    )
-            )
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            figureRadius *
-                                1.02f,
-                            figureRadius *
-                                0.82f
-                        ),
-                radius =
-                    figureRadius *
-                        0.09f,
-                color =
-                    Color.White.copy(
-                        alpha =
-                            0.88f *
-                                alpha
-                    )
-            )
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            -figureRadius *
-                                0.90f,
-                            figureRadius *
-                                0.90f
-                        ),
-                radius =
-                    figureRadius *
-                        0.075f,
-                color =
-                    Color.White.copy(
-                        alpha =
-                            0.84f *
-                                alpha
-                    )
-            )
-
-            /*
-             * Partículas pequeñas.
-             */
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            -figureRadius *
-                                1.35f,
-                            -figureRadius *
-                                0.22f
-                        ),
-                radius =
-                    figureRadius *
-                        0.035f,
-                color =
-                    Color(0xFFE8C7FF).copy(
-                        alpha =
-                            0.90f *
-                                alpha
-                    )
-            )
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            figureRadius *
-                                1.35f,
-                            figureRadius *
-                                0.18f
-                        ),
-                radius =
-                    figureRadius *
-                        0.030f,
-                color =
-                    Color(0xFFE8C7FF).copy(
-                        alpha =
-                            0.88f *
-                                alpha
-                    )
-            )
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            figureRadius *
-                                0.30f,
-                            -figureRadius *
-                                1.34f
-                        ),
-                radius =
-                    figureRadius *
-                        0.025f,
-                color =
-                    Color.White.copy(
-                        alpha =
-                            0.82f *
-                                alpha
-                    )
-            )
-
-            drawSparkle(
-                center =
-                    center +
-                        Offset(
-                            -figureRadius *
-                                0.42f,
-                            figureRadius *
-                                1.36f
-                        ),
-                radius =
-                    figureRadius *
                         0.028f,
                 color =
                     Color.White.copy(
                         alpha =
                             0.78f *
+                                alpha
+                    )
+            )
+
+            drawSparkle(
+                center =
+                    center +
+                        Offset(
+                            minDimension *
+                                0.28f,
+                            minDimension *
+                                0.25f
+                        ),
+                radius =
+                    minDimension *
+                        0.022f,
+                color =
+                    Color.White.copy(
+                        alpha =
+                            0.72f *
                                 alpha
                     )
             )
@@ -1390,501 +1212,18 @@ fun LightCoreVisualizer(
 
 /*
  * ================================================================
- * FIGURA CENTRAL ORIGINAL
- * ================================================================
- */
-
-private fun DrawScope.drawMainFigure(
-    center: Offset,
-    radius: Float,
-    alpha: Float
-) {
-
-    val outerPath =
-        Path()
-
-    /*
-     * Superior.
-     */
-
-    outerPath.moveTo(
-        center.x,
-        center.y -
-            radius
-    )
-
-    /*
-     * Superior → derecha.
-     */
-
-    outerPath.cubicTo(
-        center.x +
-            radius * 0.07f,
-        center.y -
-            radius * 0.72f,
-
-        center.x +
-            radius * 0.22f,
-        center.y -
-            radius * 0.30f,
-
-        center.x +
-            radius,
-        center.y
-    )
-
-    /*
-     * Derecha → inferior.
-     */
-
-    outerPath.cubicTo(
-        center.x +
-            radius * 0.30f,
-        center.y +
-            radius * 0.22f,
-
-        center.x +
-            radius * 0.10f,
-        center.y +
-            radius * 0.72f,
-
-        center.x,
-        center.y +
-            radius
-    )
-
-    /*
-     * Inferior → izquierda.
-     */
-
-    outerPath.cubicTo(
-        center.x -
-            radius * 0.10f,
-        center.y +
-            radius * 0.72f,
-
-        center.x -
-            radius * 0.30f,
-        center.y +
-            radius * 0.22f,
-
-        center.x -
-            radius,
-        center.y
-    )
-
-    /*
-     * Izquierda → superior.
-     */
-
-    outerPath.cubicTo(
-        center.x -
-            radius * 0.22f,
-        center.y -
-            radius * 0.30f,
-
-        center.x -
-            radius * 0.07f,
-        center.y -
-            radius * 0.72f,
-
-        center.x,
-        center.y -
-            radius
-    )
-
-    outerPath.close()
-
-    /*
-     * Glow exterior.
-     */
-
-    drawPath(
-        path =
-            outerPath,
-        color =
-            Color(0xFFB65CFF).copy(
-                alpha =
-                    0.22f *
-                        alpha
-            ),
-        style =
-            Stroke(
-                width =
-                    radius *
-                        0.24f,
-                join =
-                    StrokeJoin.Round
-            )
-    )
-
-    /*
-     * Segundo halo.
-     */
-
-    drawPath(
-        path =
-            outerPath,
-        color =
-            Color.White.copy(
-                alpha =
-                    0.22f *
-                        alpha
-            ),
-        style =
-            Stroke(
-                width =
-                    radius *
-                        0.12f,
-                join =
-                    StrokeJoin.Round
-            )
-    )
-
-    /*
-     * Cuerpo.
-     */
-
-    drawPath(
-        path =
-            outerPath,
-        brush =
-            Brush.linearGradient(
-                colors =
-                    listOf(
-                        Color.White.copy(
-                            alpha =
-                                alpha
-                        ),
-
-                        Color(0xFFF9E9FF).copy(
-                            alpha =
-                                alpha
-                        ),
-
-                        Color(0xFFE0A8FF).copy(
-                            alpha =
-                                0.99f *
-                                    alpha
-                        ),
-
-                        Color(0xFFB25CFF).copy(
-                            alpha =
-                                0.98f *
-                                    alpha
-                        ),
-
-                        Color(0xFF7028D9).copy(
-                            alpha =
-                                0.98f *
-                                    alpha
-                        )
-                    ),
-                start =
-                    Offset(
-                        center.x -
-                            radius,
-                        center.y -
-                            radius
-                    ),
-                end =
-                    Offset(
-                        center.x +
-                            radius,
-                        center.y +
-                            radius
-                    )
-            )
-    )
-
-    /*
-     * Reflejo interior.
-     */
-
-    val innerHighlight =
-        Path()
-
-    innerHighlight.moveTo(
-        center.x,
-        center.y -
-            radius *
-            0.82f
-    )
-
-    innerHighlight.cubicTo(
-        center.x +
-            radius * 0.05f,
-        center.y -
-            radius * 0.57f,
-
-        center.x +
-            radius * 0.10f,
-        center.y -
-            radius * 0.30f,
-
-        center.x +
-            radius * 0.64f,
-        center.y -
-            radius * 0.06f
-    )
-
-    innerHighlight.cubicTo(
-        center.x +
-            radius * 0.36f,
-        center.y -
-            radius * 0.10f,
-
-        center.x +
-            radius * 0.17f,
-        center.y -
-            radius * 0.07f,
-
-        center.x,
-        center.y
-    )
-
-    innerHighlight.cubicTo(
-        center.x -
-            radius * 0.17f,
-        center.y -
-            radius * 0.07f,
-
-        center.x -
-            radius * 0.36f,
-        center.y -
-            radius * 0.10f,
-
-        center.x -
-            radius * 0.64f,
-        center.y -
-            radius * 0.06f
-    )
-
-    innerHighlight.cubicTo(
-        center.x -
-            radius * 0.10f,
-        center.y -
-            radius * 0.30f,
-
-        center.x -
-            radius * 0.05f,
-        center.y -
-            radius * 0.57f,
-
-        center.x,
-        center.y -
-            radius *
-            0.82f
-    )
-
-    innerHighlight.close()
-
-    drawPath(
-        path =
-            innerHighlight,
-        color =
-            Color.White.copy(
-                alpha =
-                    0.30f *
-                        alpha
-            )
-    )
-
-    /*
-     * Núcleo.
-     */
-
-    drawCircle(
-        brush =
-            Brush.radialGradient(
-                colors =
-                    listOf(
-                        Color.White.copy(
-                            alpha =
-                                alpha
-                        ),
-                        Color.White.copy(
-                            alpha =
-                                0.92f *
-                                    alpha
-                        ),
-                        Color(0xFFF0C9FF).copy(
-                            alpha =
-                                0.65f *
-                                    alpha
-                        ),
-                        Color(0xFFC56AFF).copy(
-                            alpha =
-                                0.22f *
-                                    alpha
-                        ),
-                        Color.Transparent
-                    ),
-                center =
-                    center,
-                radius =
-                    radius *
-                        0.48f
-            ),
-        center =
-            center,
-        radius =
-            radius *
-                0.48f
-    )
-
-    /*
-     * Línea vertical.
-     */
-
-    drawLine(
-        color =
-            Color.White.copy(
-                alpha =
-                    0.72f *
-                        alpha
-            ),
-        start =
-            Offset(
-                center.x,
-                center.y -
-                    radius *
-                    0.60f
-            ),
-        end =
-            Offset(
-                center.x,
-                center.y +
-                    radius *
-                    0.60f
-            ),
-        strokeWidth =
-            radius *
-                0.022f,
-        cap =
-            StrokeCap.Round
-    )
-
-    /*
-     * Línea horizontal.
-     */
-
-    drawLine(
-        color =
-            Color.White.copy(
-                alpha =
-                    0.65f *
-                        alpha
-            ),
-        start =
-            Offset(
-                center.x -
-                    radius *
-                    0.60f,
-                center.y
-            ),
-        end =
-            Offset(
-                center.x +
-                    radius *
-                    0.60f,
-                center.y
-            ),
-        strokeWidth =
-            radius *
-                0.018f,
-        cap =
-            StrokeCap.Round
-    )
-
-    /*
-     * Borde.
-     */
-
-    drawPath(
-        path =
-            outerPath,
-        color =
-            Color.White.copy(
-                alpha =
-                    0.88f *
-                        alpha
-            ),
-        style =
-            Stroke(
-                width =
-                    radius *
-                        0.018f,
-                join =
-                    StrokeJoin.Round
-            )
-    )
-}
-
-
-/*
- * ================================================================
- * ÓRBITA
- * ================================================================
- */
-
-private fun DrawScope.drawOrbit(
-    center: Offset,
-    radiusX: Float,
-    radiusY: Float,
-    rotationDegrees: Float,
-    color: Color,
-    strokeWidth: Float
-) {
-
-    rotate(
-        degrees =
-            rotationDegrees,
-        pivot =
-            center
-    ) {
-
-        drawOval(
-            color =
-                color,
-            topLeft =
-                Offset(
-                    center.x -
-                        radiusX,
-                    center.y -
-                        radiusY
-                ),
-            size =
-                Size(
-                    radiusX * 2f,
-                    radiusY * 2f
-                ),
-            style =
-                Stroke(
-                    width =
-                        strokeWidth,
-                    cap =
-                        StrokeCap.Round
-                )
-        )
-    }
-}
-
-
-/*
- * ================================================================
  * DESTELLO
  * ================================================================
  */
 
-private fun DrawScope.drawSparkle(
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSparkle(
     center: Offset,
     radius: Float,
     color: Color
 ) {
 
     val path =
-        Path()
+        androidx.compose.ui.graphics.Path()
 
     val longRadius =
         radius
