@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.bit.armylight.viewmodel.ConcertProgram
 import com.bit.armylight.viewmodel.LightIntensity
@@ -150,87 +148,40 @@ fun LightCoreVisualizer(
         onPeakPulse()
     }
 
-    Canvas(modifier = modifier.fillMaxSize()) {
-        val center = Offset(size.width / 2f, size.height / 2f)
-        val minDim = minOf(size.width, size.height)
+        Canvas(modifier = modifier.fillMaxSize()) {
 
-        val baseRadius = minDim * 0.40f * pulseScale
+        // Luz de pantalla completa.
+        // El color ocupa todo el área disponible.
+        val screenAlpha = factor * (
+            0.82f + (0.18f * glowAlpha)
+        )
 
-        if (!isBatterySaver) {
-            val ambientRadius = minDim * 0.95f * pulseScale
+        drawRect(
+            color = concertColor.copy(alpha = screenAlpha)
+        )
 
-            val ambientBrush = Brush.radialGradient(
-                colors = listOf(
-                    concertColor.copy(alpha = 0.60f * factor * glowAlpha),
-                    secondColor.copy(alpha = 0.28f * factor),
-                    thirdColor.copy(alpha = 0.12f * factor),
-                    Color.Transparent
-                ),
-                center = center,
-                radius = ambientRadius
-            )
-
-            drawCircle(
-                brush = ambientBrush,
-                radius = ambientRadius,
-                center = center
+        // Supernova añade un destello blanco sobre toda la pantalla.
+        if (
+            isConcertActive &&
+            concertProgram == ConcertProgram.SUPERNOVA &&
+            pulseScale > 1.15f
+        ) {
+            drawRect(
+                color = Color.White.copy(
+                    alpha = 0.65f * factor
+                )
             )
         }
+    }
 
-        val coronaRadius = baseRadius * 1.55f
+           Canvas(modifier = modifier.fillMaxSize()) {
 
-        val coronaBrush = Brush.radialGradient(
-            colors = listOf(
-                concertColor.copy(alpha = 0.85f * factor * glowAlpha),
-                secondColor.copy(alpha = 0.55f * factor * glowAlpha),
-                thirdColor.copy(alpha = 0.25f * factor),
-                Color.Transparent
-            ),
-            center = center,
-            radius = coronaRadius
+        val screenAlpha = factor * (
+            0.82f + (0.18f * glowAlpha)
         )
 
-        drawCircle(
-            brush = coronaBrush,
-            radius = coronaRadius,
-            center = center
-        )
-
-        val bodyBrush = Brush.radialGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.92f * factor),
-                concertColor.copy(alpha = 0.95f * factor),
-                secondColor.copy(alpha = 0.82f * factor),
-                thirdColor.copy(alpha = 0.60f * factor),
-                Color.Transparent
-            ),
-            center = center,
-            radius = baseRadius
-        )
-
-        drawCircle(
-            brush = bodyBrush,
-            radius = baseRadius,
-            center = center
-        )
-
-        val coreRadius = baseRadius * 0.38f
-
-        val coreBrush = Brush.radialGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 1.0f * factor),
-                Color.White.copy(alpha = 0.85f * factor),
-                concertColor.copy(alpha = 0.75f * factor),
-                Color.Transparent
-            ),
-            center = center,
-            radius = coreRadius
-        )
-
-        drawCircle(
-            brush = coreBrush,
-            radius = coreRadius,
-            center = center
+        drawRect(
+            color = concertColor.copy(alpha = screenAlpha)
         )
 
         if (
@@ -238,10 +189,24 @@ fun LightCoreVisualizer(
             concertProgram == ConcertProgram.SUPERNOVA &&
             pulseScale > 1.15f
         ) {
-            drawCircle(
-                color = Color.White.copy(alpha = 0.75f * factor),
-                radius = baseRadius * 1.08f,
-                center = center
+            drawRect(
+                color = Color.White.copy(
+                    alpha = 0.65f * factor
+                )
+            )
+        }
+    }
+}
+
+                if (
+            isConcertActive &&
+            concertProgram == ConcertProgram.SUPERNOVA &&
+            pulseScale > 1.15f
+        ) {
+            drawRect(
+                color = Color.White.copy(
+                    alpha = 0.65f * factor
+                )
             )
         }
     }
