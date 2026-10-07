@@ -79,8 +79,12 @@ class AudioBeatDetector(
                             bufferSize / 2
                         )
 
-                    var smoothedLevel = 0f
-                    var previousLevel = 0f
+                    var energyLevel = 0f
+                    var displayLevel = 0f
+                    var previousEnergy = 0f
+
+                    var averageEnergy = 0f
+                    var beatEnergy = 0f
 
                     while (isRunning) {
 
@@ -101,7 +105,7 @@ class AudioBeatDetector(
 
 
                         /*
-                         * CALCULAR RMS
+                         * ENERGÍA DE LA SEÑAL
                          */
 
                         var sum = 0.0
@@ -122,15 +126,15 @@ class AudioBeatDetector(
 
 
                         /*
-                         * SENSIBILIDAD MUSICAL
+                         * NIVEL BASE DE LA MÚSICA
                          *
-                         * Más sensible que la versión
-                         * original, pero sin exagerar.
+                         * Sensibilidad alta, pero
+                         * todavía controlada.
                          */
 
                         val normalized =
                             (
-                                rms / 700.0
+                                rms / 650.0
                             )
                                 .coerceIn(
                                     0.0,
@@ -140,60 +144,103 @@ class AudioBeatDetector(
 
 
                         /*
-                         * SUAVIZADO
+                         * SEGUIMIENTO DE LA ENERGÍA
                          *
-                         * La música tiene más influencia
-                         * que el valor anterior, pero la
-                         * transición sigue siendo suave.
+                         * La música reciente tiene
+                         * bastante peso.
                          */
 
-                        smoothedLevel =
+                        energyLevel =
                             (
-                                smoothedLevel * 0.40f
+                                energyLevel * 0.35f
                             ) +
                             (
-                                normalized * 0.60f
+                                normalized * 0.65f
                             )
 
 
                         /*
-                         * DETECCIÓN DE CAMBIOS DE RITMO
-                         */
-
-                        val difference =
-                            smoothedLevel -
-                            previousLevel
-
-
-                        /*
-                         * PEQUEÑO IMPULSO EN LOS GOLPES
+                         * PROMEDIO LENTO
                          *
-                         * No domina la señal.
-                         * Solo hace destacar los golpes.
+                         * Sirve para distinguir un
+                         * golpe musical de un ruido
+                         * constante.
                          */
 
-                        val beatBoost =
-                            when {
-
-                                difference > 0.08f ->
-                                    0.20f
-
-                                difference > 0.035f ->
-                                    0.08f
-
-                                else ->
-                                    0f
-                            }
+                        averageEnergy =
+                            (
+                                averageEnergy * 0.92f
+                            ) +
+                            (
+                                energyLevel * 0.08f
+                            )
 
 
                         /*
-                         * NIVEL FINAL
+                         * DIFERENCIA CONTRA EL NIVEL BASE
                          */
 
-                        val finalLevel =
+                        val musicRise =
                             (
-                                smoothedLevel +
-                                beatBoost
+                                energyLevel -
+                                averageEnergy
+                            )
+                                .coerceAtLeast(0f)
+
+
+                        /*
+                         * CAMBIO ENTRE MUESTRAS
+                         */
+
+                        val instantRise =
+                            (
+                                energyLevel -
+                                previousEnergy
+                            )
+                                .coerceAtLeast(0f)
+
+
+                        /*
+                         * DETECCIÓN DE GOLPE
+                         *
+                         * Los cambios rápidos reciben
+                         * más importancia.
+                         */
+
+                        val beatStrength =
+                            (
+                                musicRise * 2.2f
+                            ) +
+                            (
+                                instantRise * 1.8f
+                            )
+
+
+                        /*
+                         * LIMITAR EL BEAT
+                         */
+
+                        beatEnergy =
+                            beatStrength
+                                .coerceIn(
+                                    0f,
+                                    1f
+                                )
+
+
+                        /*
+                         * NIVEL MUSICAL FINAL
+                         *
+                         * 75% energía de música
+                         * 25% golpes
+                         */
+
+                        val targetLevel =
+                            (
+                                energyLevel * 0.75f
+                            ) +
+                            (
+                                beatEnergy * 0.25f
                             )
                                 .coerceIn(
                                     0f,
@@ -201,8 +248,58 @@ class AudioBeatDetector(
                                 )
 
 
-                        previousLevel =
-                            smoothedLevel
+                        /*
+                         * RESPUESTA RÁPIDA AL SUBIR
+                         * Y SUAVE AL BAJAR.
+                         *
+                         * Esto hace que la luz
+                         * siga mejor la música.
+                         */
+
+                        displayLevel =
+                            if (
+                                targetLevel >
+                                displayLevel
+                            ) {
+
+                                (
+                                    displayLevel * 0.25f
+                                ) +
+                                (
+                                    targetLevel * 0.75f
+                                )
+
+                            } else {
+
+                                (
+                                    displayLevel * 0.65f
+                                ) +
+                                (
+                                    targetLevel * 0.35f
+                                )
+                            }
+
+
+                        /*
+                         * PEQUEÑO IMPULSO FINAL
+                         *
+                         * Evita que los golpes fuertes
+                         * queden demasiado apagados.
+                         */
+
+                        val finalLevel =
+                            (
+                                displayLevel +
+                                beatEnergy * 0.10f
+                            )
+                                .coerceIn(
+                                    0f,
+                                    1f
+                                )
+
+
+                        previousEnergy =
+                            energyLevel
 
 
                         /*
@@ -214,10 +311,6 @@ class AudioBeatDetector(
                         )
 
 
-                        /*
-                         * FRECUENCIA DE ACTUALIZACIÓN
-                         */
-
                         try {
                             Thread.sleep(30)
                         } catch (_: InterruptedException) {
@@ -225,10 +318,6 @@ class AudioBeatDetector(
                         }
                     }
 
-
-                    /*
-                     * LIMPIEZA DEL GRABADOR
-                     */
 
                     try {
                         recorder.stop()
@@ -258,7 +347,7 @@ class AudioBeatDetector(
 
 
     /*
-     * ENVIAR EL NIVEL AL HILO PRINCIPAL
+     * ENVIAR NIVEL AL HILO PRINCIPAL
      */
 
     private fun sendLevel(
