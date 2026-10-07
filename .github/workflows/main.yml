@@ -1,0 +1,45 @@
+name: Build BIT Army Light APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android SDK
+        run: |
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-36"
+          sdkmanager "build-tools;35.0.0"
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Compilar APK
+        working-directory: "Nueva carpeta/android"
+        run: gradle assembleDebug --no-daemon
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIT-Army-Light-APK
+          path: "Nueva carpeta/android/app/build/outputs/apk/debug/*.apk"
