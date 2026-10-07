@@ -42,7 +42,7 @@ class AudioBeatDetector(
         val bufferSize =
             maxOf(
                 minBuffer,
-                sampleRate / 5
+                sampleRate / 10
             )
 
         try {
@@ -101,7 +101,7 @@ class AudioBeatDetector(
 
 
                         /*
-                         * CALCULAR RMS
+                         * RMS DEL AUDIO
                          */
 
                         var sum = 0.0
@@ -122,18 +122,16 @@ class AudioBeatDetector(
 
 
                         /*
-                         * MAYOR SENSIBILIDAD
+                         * SENSIBILIDAD MUY ALTA
                          *
-                         * Antes:
-                         * rms / 7000
-                         *
-                         * Ahora:
-                         * rms / 2500
+                         * Un valor pequeño de RMS
+                         * ahora produce una respuesta
+                         * mucho mayor.
                          */
 
                         val normalized =
                             (
-                                rms / 2500.0
+                                rms / 900.0
                             )
                                 .coerceIn(
                                     0.0,
@@ -143,20 +141,20 @@ class AudioBeatDetector(
 
 
                         /*
-                         * SUAVIZADO
+                         * RESPUESTA RÁPIDA
                          */
 
                         smoothedLevel =
                             (
-                                smoothedLevel * 0.55f
+                                smoothedLevel * 0.30f
                             ) +
                             (
-                                normalized * 0.45f
+                                normalized * 0.70f
                             )
 
 
                         /*
-                         * DETECCIÓN DE GOLPE
+                         * RESPUESTA EXTRA A LOS GOLPES
                          */
 
                         val difference =
@@ -164,13 +162,16 @@ class AudioBeatDetector(
                             previousLevel
 
                         val beatBoost =
-                            if (
-                                smoothedLevel > 0.18f &&
-                                difference > 0.025f
-                            ) {
-                                0.30f
-                            } else {
-                                0f
+                            when {
+
+                                difference > 0.08f ->
+                                    0.40f
+
+                                difference > 0.035f ->
+                                    0.20f
+
+                                else ->
+                                    0f
                             }
 
 
@@ -194,7 +195,7 @@ class AudioBeatDetector(
 
 
                         /*
-                         * ENVIAR AL HILO PRINCIPAL
+                         * ENVIAR A COMPOSE
                          */
 
                         sendLevel(
@@ -203,7 +204,7 @@ class AudioBeatDetector(
 
 
                         try {
-                            Thread.sleep(35)
+                            Thread.sleep(25)
                         } catch (_: InterruptedException) {
                             break
                         }
