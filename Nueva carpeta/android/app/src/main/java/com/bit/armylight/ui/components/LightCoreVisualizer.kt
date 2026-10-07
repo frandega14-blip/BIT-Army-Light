@@ -1,544 +1,934 @@
 package com.bit.armylight.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.unit.dp
 import com.bit.armylight.viewmodel.ConcertProgram
 import com.bit.armylight.viewmodel.LightIntensity
+import kotlinx.coroutines.delay
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
 fun LightCoreVisualizer(
-    modifier: Modifier = Modifier,
     isPulseActive: Boolean,
     isConcertActive: Boolean,
     concertProgram: ConcertProgram,
     intensity: LightIntensity,
     isBatterySaver: Boolean,
-    isRhythmActive: Boolean,
-    rhythmLevel: Float,
+    isRhythmActive: Boolean = false,
+    rhythmLevel: Float = 0f,
     onPeakPulse: () -> Unit
 ) {
 
-    val transition = rememberInfiniteTransition(
-        label = "LightEngine"
-    )
+    /*
+     * =========================================================
+     * ANIMACIONES
+     * =========================================================
+     */
 
-    val pulseDuration =
-        if (isConcertActive) {
+    val infiniteTransition =
+        rememberInfiniteTransition(
+            label = "BIT-Light"
+        )
 
-            when (concertProgram) {
-                ConcertProgram.STROBE -> 260
-                ConcertProgram.WAVE -> 900
-                ConcertProgram.SUPERNOVA -> 550
-                ConcertProgram.AURORA -> 1800
-            }
-
-        } else {
-            2400
-        }
-
-    val pulseScale by transition.animateFloat(
-        initialValue =
-            if (isPulseActive) 0.82f else 1.0f,
-        targetValue =
-            if (isPulseActive) 1.25f else 1.0f,
+    /*
+     * Respiración suave de la estrella.
+     */
+    val breathing by infiniteTransition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
         animationSpec =
             infiniteRepeatable(
-                animation = tween(
-                    durationMillis = pulseDuration,
-                    easing =
-                        if (
-                            isConcertActive &&
-                            concertProgram ==
-                            ConcertProgram.STROBE
-                        ) {
-                            LinearEasing
-                        } else {
-                            FastOutSlowInEasing
-                        }
-                ),
+                animation =
+                    tween(
+                        durationMillis = 1800,
+                        easing = FastOutSlowInEasing
+                    ),
                 repeatMode = RepeatMode.Reverse
             ),
-        label = "PulseScale"
+        label = "breathing"
     )
 
-    val glowAlpha by transition.animateFloat(
-        initialValue =
-            if (isPulseActive) 0.45f else 0.85f,
-        targetValue =
-            if (isPulseActive) 1.0f else 0.85f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(
-                    durationMillis = pulseDuration,
-                    easing = FastOutSlowInEasing
-                ),
-                repeatMode = RepeatMode.Reverse
-            ),
-        label = "PulseAlpha"
-    )
-
-    val colorStep by transition.animateFloat(
+    /*
+     * Rotación de las órbitas.
+     */
+    val orbitRotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec =
             infiniteRepeatable(
-                animation = tween(
-                    durationMillis =
-                        when (concertProgram) {
-                            ConcertProgram.STROBE -> 1500
-                            ConcertProgram.WAVE -> 3600
-                            ConcertProgram.SUPERNOVA -> 2100
-                            ConcertProgram.AURORA -> 6500
-                        },
-                    easing = LinearEasing
-                ),
+                animation =
+                    tween(
+                        durationMillis = 7000,
+                        easing = FastOutSlowInEasing
+                    ),
                 repeatMode = RepeatMode.Restart
             ),
-        label = "ColorCycle"
+        label = "orbit"
     )
 
-    val factor = intensity.factor
+    /*
+     * Pulso visual.
+     */
+    val pulseAnimation by infiniteTransition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.18f,
+        animationSpec =
+            infiniteRepeatable(
+                animation =
+                    tween(
+                        durationMillis = 700,
+                        easing = FastOutSlowInEasing
+                    ),
+                repeatMode = RepeatMode.Reverse
+            ),
+        label = "pulse"
+    )
 
-    fun hsvColor(
-        hue: Float,
-        saturation: Float = 0.9f
-    ): Color {
+    /*
+     * =========================================================
+     * RITMO
+     * =========================================================
+     */
 
-        val normalizedHue =
-            ((hue % 360f) + 360f) % 360f
+    val rhythm =
+        if (isRhythmActive) {
+            rhythmLevel.coerceIn(
+                0f,
+                1f
+            )
+        } else {
+            0f
+        }
 
-        return Color.hsv(
-            hue = normalizedHue,
-            saturation = saturation,
-            value = 1f
+    /*
+     * =========================================================
+     * INTENSIDAD
+     * =========================================================
+     */
+
+    val intensityFactor =
+        intensity.factor.coerceIn(
+            0.3f,
+            1f
         )
-    }
-
-    val concertColor =
-        if (!isConcertActive) {
-
-            Color(0xFF8B5CF6)
-
-        } else {
-
-            when (concertProgram) {
-
-                ConcertProgram.WAVE ->
-                    hsvColor(
-                        260f +
-                                (colorStep * 0.55f),
-                        0.90f
-                    )
-
-                ConcertProgram.STROBE -> {
-
-                    val step =
-                        (colorStep / 60f)
-                            .toInt() * 60f
-
-                    hsvColor(
-                        step.toFloat(),
-                        1f
-                    )
-                }
-
-                ConcertProgram.SUPERNOVA ->
-                    hsvColor(
-                        200f + colorStep,
-                        0.95f
-                    )
-
-                ConcertProgram.AURORA ->
-                    hsvColor(
-                        colorStep,
-                        0.82f
-                    )
-            }
-        }
-
-    val secondColor =
-        if (!isConcertActive) {
-
-            Color(0xFF7C3AED)
-
-        } else {
-
-            when (concertProgram) {
-
-                ConcertProgram.WAVE ->
-                    hsvColor(
-                        colorStep + 90f,
-                        0.90f
-                    )
-
-                ConcertProgram.STROBE ->
-                    hsvColor(
-                        colorStep + 120f,
-                        1f
-                    )
-
-                ConcertProgram.SUPERNOVA ->
-                    hsvColor(
-                        colorStep + 120f,
-                        0.95f
-                    )
-
-                ConcertProgram.AURORA ->
-                    hsvColor(
-                        colorStep + 120f,
-                        0.78f
-                    )
-            }
-        }
-
-    val thirdColor =
-        if (!isConcertActive) {
-
-            Color(0xFF4C1D95)
-
-        } else {
-
-            when (concertProgram) {
-
-                ConcertProgram.WAVE ->
-                    hsvColor(
-                        colorStep + 180f,
-                        0.88f
-                    )
-
-                ConcertProgram.STROBE ->
-                    hsvColor(
-                        colorStep + 240f,
-                        1f
-                    )
-
-                ConcertProgram.SUPERNOVA ->
-                    hsvColor(
-                        colorStep + 240f,
-                        0.95f
-                    )
-
-                ConcertProgram.AURORA ->
-                    hsvColor(
-                        colorStep + 240f,
-                        0.80f
-                    )
-            }
-        }
 
     /*
-     * MODO RITMO
-     *
-     * El nivel del micrófono controla el brillo.
+     * El ritmo hace que el símbolo crezca ligeramente
+     * cuando detecta sonido.
      */
-    val rhythmBoost =
+    val rhythmScale =
         if (isRhythmActive) {
-            rhythmLevel.coerceIn(0f, 1f)
+            1f + rhythm * 0.20f
         } else {
-            0f
-        }
-
-    val rhythmAlpha =
-        if (isRhythmActive) {
-            (0.72f + rhythmBoost * 0.28f)
-                .coerceIn(0f, 1f)
-        } else {
-            0f
+            1f
         }
 
     /*
-     * Flash de ritmo cuando el sonido es fuerte.
+     * Si Pulso está activo usamos la animación rápida.
+     * De lo contrario usamos una respiración suave.
      */
-    val rhythmFlash =
-        isRhythmActive &&
-        rhythmLevel > 0.72f
+    val baseScale =
+        if (isPulseActive) {
+            pulseAnimation
+        } else {
+            breathing
+        }
 
-    /*
-     * Pulso háptico normal.
-     */
-    if (
-        isPulseActive &&
-        pulseScale > 1.23f
-    ) {
-        onPeakPulse()
-    }
-
-    Canvas(
-        modifier = modifier.fillMaxSize()
-    ) {
-
-        val screenAlpha =
-            factor * (
-                0.78f +
-                        (0.22f * glowAlpha)
+    val finalScale =
+        baseScale *
+            rhythmScale *
+            (
+                0.92f +
+                    intensityFactor * 0.08f
             )
 
-        /*
-         * =====================================================
-         * MODO RITMO
-         * =====================================================
-         *
-         * Tiene prioridad visual cuando está activo.
-         */
-        if (isRhythmActive) {
+    /*
+     * Ahorro OLED reduce el brillo.
+     */
+    val baseAlpha =
+        if (isBatterySaver) {
+            0.55f
+        } else {
+            0.95f
+        }
+
+    /*
+     * =========================================================
+     * COLOR DEL SÍMBOLO
+     * =========================================================
+     */
+
+    val mainColor =
+        when {
 
             /*
-             * Color que cambia suavemente
-             * según el nivel del sonido.
+             * Ritmo:
+             * el color responde ligeramente al nivel
+             * del sonido.
              */
-            val rhythmColor =
-                when {
+            isRhythmActive -> {
 
-                    rhythmLevel > 0.82f ->
-                        Color.White
+                Color(
+                    red = 0.82f,
+                    green =
+                        0.30f +
+                            rhythm * 0.35f,
+                    blue = 1f
+                )
+            }
 
-                    rhythmLevel > 0.60f ->
-                        hsvColor(
-                            colorStep + 180f,
-                            0.95f
+            /*
+             * Luz normal.
+             */
+            !isConcertActive -> {
+
+                Color(
+                    0xFFE6B8FF
+                )
+            }
+
+            /*
+             * Programas de concierto.
+             */
+            else -> {
+
+                when (
+                    concertProgram.title.lowercase()
+                ) {
+
+                    "onda púrpura" ->
+                        Color(
+                            0xFFD58CFF
                         )
 
-                    rhythmLevel > 0.35f ->
-                        hsvColor(
-                            colorStep + 70f,
-                            0.90f
+                    "strobe beat" ->
+                        Color(
+                            0xFFF4D9FF
+                        )
+
+                    "supernova" ->
+                        Color(
+                            0xFFE7C7FF
+                        )
+
+                    "aurora" ->
+                        Color(
+                            0xFFBFA7FF
                         )
 
                     else ->
-                        Color(0xFF8B5CF6)
+                        Color(
+                            0xFFD58CFF
+                        )
                 }
+            }
+        }
 
-            drawRect(
-                color = rhythmColor.copy(
-                    alpha =
-                        screenAlpha *
-                                rhythmAlpha
+    /*
+     * Intensidad del halo cuando hay ritmo.
+     */
+    val rhythmGlow =
+        if (isRhythmActive) {
+            rhythm * 0.45f
+        } else {
+            0f
+        }
+
+    /*
+     * =========================================================
+     * DETECCIÓN DE PICOS PARA VIBRACIÓN
+     * =========================================================
+     */
+
+    var lastPeak by remember {
+        mutableLongStateOf(0L)
+    }
+
+    LaunchedEffect(
+        isRhythmActive,
+        rhythmLevel,
+        isPulseActive,
+        isConcertActive
+    ) {
+
+        if (
+            isRhythmActive &&
+            rhythmLevel > 0.78f
+        ) {
+
+            val now =
+                System.currentTimeMillis()
+
+            if (
+                now - lastPeak >
+                350L
+            ) {
+
+                lastPeak = now
+
+                onPeakPulse()
+            }
+        }
+
+        delay(30L)
+    }
+
+    /*
+     * =========================================================
+     * VISUALIZADOR
+     * =========================================================
+     */
+
+    Box(
+        modifier =
+            Modifier.fillMaxSize()
+    ) {
+
+        Canvas(
+            modifier =
+                Modifier.fillMaxSize()
+        ) {
+
+            /*
+             * Posición central del símbolo.
+             *
+             * 0.43f lo coloca en la zona central superior,
+             * dejando espacio para el panel inferior.
+             */
+            val center =
+                Offset(
+                    x =
+                        size.width / 2f,
+                    y =
+                        size.height * 0.43f
                 )
+
+            /*
+             * Tamaño principal.
+             */
+            val symbolRadius =
+                size.minDimension * 0.22f
+
+            /*
+             * =================================================
+             * HALO EXTERIOR
+             * =================================================
+             */
+
+            drawCircle(
+                brush =
+                    Brush.radialGradient(
+                        colors =
+                            listOf(
+                                mainColor.copy(
+                                    alpha =
+                                        (
+                                            0.28f +
+                                                rhythmGlow
+                                            )
+                                            .coerceAtMost(
+                                                0.55f
+                                            )
+                                ),
+                                mainColor.copy(
+                                    alpha = 0.12f
+                                ),
+                                Color.Transparent
+                            ),
+                        center = center,
+                        radius =
+                            symbolRadius *
+                                2.35f *
+                                finalScale
+                    ),
+                center = center,
+                radius =
+                    symbolRadius *
+                        2.35f *
+                        finalScale
             )
 
             /*
-             * Capa secundaria cuando sube el volumen.
+             * =================================================
+             * HALO INTERIOR
+             * =================================================
              */
-            if (rhythmLevel > 0.30f) {
 
-                drawRect(
-                    color = secondColor.copy(
-                        alpha =
-                            rhythmLevel *
-                                    0.28f *
-                                    factor
-                    )
-                )
-            }
+            drawCircle(
+                brush =
+                    Brush.radialGradient(
+                        colors =
+                            listOf(
+                                Color.White.copy(
+                                    alpha =
+                                        0.22f *
+                                            baseAlpha
+                                ),
+                                mainColor.copy(
+                                    alpha =
+                                        0.20f *
+                                            baseAlpha
+                                ),
+                                Color.Transparent
+                            ),
+                        center = center,
+                        radius =
+                            symbolRadius *
+                                1.45f *
+                                finalScale
+                    ),
+                center = center,
+                radius =
+                    symbolRadius *
+                        1.45f *
+                        finalScale
+            )
 
             /*
-             * GOLPE FUERTE
+             * =================================================
+             * ÓRBITA PRINCIPAL
+             * =================================================
              */
-            if (rhythmFlash) {
 
-                drawRect(
-                    color = Color.White.copy(
+            drawOrbit(
+                center = center,
+                radiusX =
+                    symbolRadius *
+                        1.62f *
+                        finalScale,
+                radiusY =
+                    symbolRadius *
+                        0.62f *
+                        finalScale,
+                rotationDegrees =
+                    -18f +
+                        orbitRotation * 0.02f,
+                color =
+                    Color.White.copy(
                         alpha =
-                            ((rhythmLevel - 0.72f) *
-                                    1.8f)
-                                .coerceIn(0f, 0.75f) *
-                                factor
+                            0.92f *
+                                baseAlpha
                     )
-                )
-            }
-
-        } else if (!isConcertActive) {
+            )
 
             /*
-             * MODO NORMAL
+             * =================================================
+             * SEGUNDA ÓRBITA
+             * =================================================
              */
-            drawRect(
-                color = concertColor.copy(
-                    alpha = screenAlpha
+
+            drawOrbit(
+                center = center,
+                radiusX =
+                    symbolRadius *
+                        1.45f *
+                        finalScale,
+                radiusY =
+                    symbolRadius *
+                        0.48f *
+                        finalScale,
+                rotationDegrees =
+                    155f +
+                        orbitRotation * 0.015f,
+                color =
+                    mainColor.copy(
+                        alpha =
+                            0.42f *
+                                baseAlpha
+                    )
+            )
+
+            /*
+             * =================================================
+             * ESTRELLA CENTRAL
+             * =================================================
+             */
+
+            drawFourPointStar(
+                center = center,
+                radius =
+                    symbolRadius *
+                        finalScale,
+                color = mainColor,
+                alpha = baseAlpha
+            )
+
+            /*
+             * =================================================
+             * CENTRO DE LA ESTRELLA
+             * =================================================
+             */
+
+            drawCircle(
+                color =
+                    Color.White.copy(
+                        alpha =
+                            0.92f *
+                                baseAlpha
+                    ),
+                center = center,
+                radius =
+                    symbolRadius *
+                        0.12f *
+                        finalScale
+            )
+
+            /*
+             * =================================================
+             * DESTELLOS
+             * =================================================
+             */
+
+            drawSparkle(
+                center =
+                    center +
+                        Offset(
+                            x =
+                                -symbolRadius *
+                                    1.15f *
+                                    finalScale,
+                            y =
+                                -symbolRadius *
+                                    0.85f *
+                                    finalScale
+                        ),
+                radius =
+                    symbolRadius *
+                        0.22f *
+                        finalScale,
+                color =
+                    Color.White.copy(
+                        alpha =
+                            0.95f *
+                                baseAlpha
+                    )
+            )
+
+            drawSparkle(
+                center =
+                    center +
+                        Offset(
+                            x =
+                                symbolRadius *
+                                    1.15f *
+                                    finalScale,
+                            y =
+                                -symbolRadius *
+                                    0.65f *
+                                    finalScale
+                        ),
+                radius =
+                    symbolRadius *
+                        0.17f *
+                        finalScale,
+                color =
+                    Color.White.copy(
+                        alpha =
+                            0.90f *
+                                baseAlpha
+                    )
+            )
+
+            drawSparkle(
+                center =
+                    center +
+                        Offset(
+                            x =
+                                symbolRadius *
+                                    1.10f *
+                                    finalScale,
+                            y =
+                                symbolRadius *
+                                    0.95f *
+                                    finalScale
+                        ),
+                radius =
+                    symbolRadius *
+                        0.15f *
+                        finalScale,
+                color =
+                    mainColor.copy(
+                        alpha =
+                            0.90f *
+                                baseAlpha
+                    )
+            )
+
+            drawSparkle(
+                center =
+                    center +
+                        Offset(
+                            x =
+                                -symbolRadius *
+                                    1.05f *
+                                    finalScale,
+                            y =
+                                symbolRadius *
+                                    0.85f *
+                                    finalScale
+                        ),
+                radius =
+                    symbolRadius *
+                        0.12f *
+                        finalScale,
+                color =
+                    Color.White.copy(
+                        alpha =
+                            0.85f *
+                                baseAlpha
+                    )
+            )
+
+            /*
+             * =================================================
+             * DESTELLOS EXTRA CON RITMO
+             * =================================================
+             */
+
+            if (
+                isRhythmActive &&
+                rhythm > 0.35f
+            ) {
+
+                val extraAlpha =
+                    (
+                        rhythm *
+                            0.85f
+                        )
+                        .coerceIn(
+                            0f,
+                            0.85f
+                        )
+
+                drawSparkle(
+                    center =
+                        center +
+                            Offset(
+                                x = 0f,
+                                y =
+                                    -symbolRadius *
+                                        1.45f *
+                                        finalScale
+                            ),
+                    radius =
+                        symbolRadius *
+                            (
+                                0.10f +
+                                    rhythm *
+                                        0.12f
+                                ) *
+                            finalScale,
+                    color =
+                        Color.White.copy(
+                            alpha =
+                                extraAlpha
+                        )
                 )
+
+                drawSparkle(
+                    center =
+                        center +
+                            Offset(
+                                x = 0f,
+                                y =
+                                    symbolRadius *
+                                        1.45f *
+                                        finalScale
+                            ),
+                    radius =
+                        symbolRadius *
+                            (
+                                0.08f +
+                                    rhythm *
+                                        0.10f
+                                ) *
+                            finalScale,
+                    color =
+                        mainColor.copy(
+                            alpha =
+                                extraAlpha
+                        )
+                )
+            }
+        }
+    }
+}
+
+
+/*
+ * =============================================================
+ * ESTRELLA DE CUATRO PUNTAS
+ * =============================================================
+ *
+ * Este es el nuevo símbolo propio de BIT.
+ */
+private fun DrawScope.drawFourPointStar(
+    center: Offset,
+    radius: Float,
+    color: Color,
+    alpha: Float
+) {
+
+    val outerRadius =
+        radius
+
+    val innerRadius =
+        radius * 0.16f
+
+    val path =
+        Path()
+
+    for (i in 0 until 8) {
+
+        val angle =
+            (
+                -90f +
+                    i * 45f
+                )
+                .toRadians()
+
+        val currentRadius =
+            if (i % 2 == 0) {
+                outerRadius
+            } else {
+                innerRadius
+            }
+
+        val x =
+            center.x +
+                cos(angle) *
+                    currentRadius
+
+        val y =
+            center.y +
+                sin(angle) *
+                    currentRadius
+
+        if (i == 0) {
+
+            path.moveTo(
+                x.toFloat(),
+                y.toFloat()
             )
 
         } else {
 
-            /*
-             * =================================================
-             * CONCIERTO
-             * =================================================
-             */
-            when (concertProgram) {
-
-                ConcertProgram.WAVE -> {
-
-                    val wavePosition =
-                        (colorStep / 360f) *
-                                size.width * 2f
-
-                    val bandWidth =
-                        size.width * 0.65f
-
-                    drawRect(
-                        color =
-                            concertColor.copy(
-                                alpha = screenAlpha
-                            )
-                    )
-
-                    drawRect(
-                        color =
-                            secondColor.copy(
-                                alpha =
-                                    0.42f * factor
-                            ),
-                        topLeft =
-                            androidx.compose.ui.geometry.Offset(
-                                x =
-                                    wavePosition -
-                                            bandWidth,
-                                y = 0f
-                            ),
-                        size =
-                            androidx.compose.ui.geometry.Size(
-                                width = bandWidth,
-                                height = size.height
-                            )
-                    )
-
-                    drawRect(
-                        color =
-                            thirdColor.copy(
-                                alpha =
-                                    0.32f * factor
-                            ),
-                        topLeft =
-                            androidx.compose.ui.geometry.Offset(
-                                x =
-                                    wavePosition -
-                                            bandWidth * 2f,
-                                y = 0f
-                            ),
-                        size =
-                            androidx.compose.ui.geometry.Size(
-                                width = bandWidth,
-                                height = size.height
-                            )
-                    )
-                }
-
-                ConcertProgram.STROBE -> {
-
-                    drawRect(
-                        color =
-                            concertColor.copy(
-                                alpha = screenAlpha
-                            )
-                    )
-
-                    if (colorStep % 90f < 18f) {
-
-                        drawRect(
-                            color =
-                                Color.White.copy(
-                                    alpha =
-                                        0.75f *
-                                                factor
-                                )
-                        )
-                    }
-                }
-
-                ConcertProgram.SUPERNOVA -> {
-
-                    drawRect(
-                        color =
-                            concertColor.copy(
-                                alpha = screenAlpha
-                            )
-                    )
-
-                    if (pulseScale > 1.05f) {
-
-                        drawRect(
-                            color =
-                                secondColor.copy(
-                                    alpha =
-                                        0.28f *
-                                                factor
-                                )
-                        )
-                    }
-
-                    if (pulseScale > 1.18f) {
-
-                        drawRect(
-                            color =
-                                Color.White.copy(
-                                    alpha =
-                                        0.72f *
-                                                factor
-                                )
-                        )
-                    }
-                }
-
-                ConcertProgram.AURORA -> {
-
-                    drawRect(
-                        color =
-                            concertColor.copy(
-                                alpha = screenAlpha
-                            )
-                    )
-
-                    drawRect(
-                        color =
-                            secondColor.copy(
-                                alpha =
-                                    0.30f *
-                                            factor
-                            )
-                    )
-
-                    drawRect(
-                        color =
-                            thirdColor.copy(
-                                alpha =
-                                    0.22f *
-                                            factor
-                            )
-                    )
-                }
-            }
-        }
-
-        /*
-         * FLASH EXTRA DE SUPERNOVA
-         */
-        if (
-            isConcertActive &&
-            concertProgram ==
-            ConcertProgram.SUPERNOVA &&
-            pulseScale > 1.20f
-        ) {
-
-            drawRect(
-                color =
-                    Color.White.copy(
-                        alpha =
-                            0.30f *
-                                    factor
-                    )
+            path.lineTo(
+                x.toFloat(),
+                y.toFloat()
             )
         }
     }
+
+    path.close()
+
+    /*
+     * Resplandor externo.
+     */
+    drawPath(
+        path = path,
+        color =
+            color.copy(
+                alpha =
+                    0.24f *
+                        alpha
+            ),
+        style =
+            Stroke(
+                width =
+                    radius * 0.16f,
+                join =
+                    StrokeJoin.Round
+            )
+    )
+
+    /*
+     * Cuerpo principal con degradado.
+     */
+    drawPath(
+        path = path,
+        brush =
+            Brush.linearGradient(
+                colors =
+                    listOf(
+                        Color.White.copy(
+                            alpha =
+                                0.98f *
+                                    alpha
+                        ),
+                        color.copy(
+                            alpha =
+                                0.98f *
+                                    alpha
+                        ),
+                        Color(
+                            red = 0.45f,
+                            green = 0.12f,
+                            blue = 0.95f,
+                            alpha =
+                                0.98f *
+                                    alpha
+                        )
+                    ),
+                start =
+                    Offset(
+                        center.x - radius,
+                        center.y - radius
+                    ),
+                end =
+                    Offset(
+                        center.x + radius,
+                        center.y + radius
+                    )
+            )
+    )
+}
+
+
+/*
+ * =============================================================
+ * ÓRBITA ELÍPTICA
+ * =============================================================
+ */
+private fun DrawScope.drawOrbit(
+    center: Offset,
+    radiusX: Float,
+    radiusY: Float,
+    rotationDegrees: Float,
+    color: Color
+) {
+
+    rotate(
+        degrees =
+            rotationDegrees,
+        pivot = center
+    ) {
+
+        drawOval(
+            color = color,
+            topLeft =
+                Offset(
+                    center.x - radiusX,
+                    center.y - radiusY
+                ),
+            size =
+                androidx.compose.ui.geometry.Size(
+                    radiusX * 2f,
+                    radiusY * 2f
+                ),
+            style =
+                Stroke(
+                    width =
+                        5.dp.toPx(),
+                    cap =
+                        StrokeCap.Round
+                )
+        )
+    }
+}
+
+
+/*
+ * =============================================================
+ * DESTELLO DE CUATRO PUNTAS
+ * =============================================================
+ */
+private fun DrawScope.drawSparkle(
+    center: Offset,
+    radius: Float,
+    color: Color
+) {
+
+    val path =
+        Path()
+
+    val longRadius =
+        radius
+
+    val shortRadius =
+        radius * 0.18f
+
+    path.moveTo(
+        center.x,
+        center.y - longRadius
+    )
+
+    path.lineTo(
+        center.x + shortRadius,
+        center.y - shortRadius
+    )
+
+    path.lineTo(
+        center.x + longRadius,
+        center.y
+    )
+
+    path.lineTo(
+        center.x + shortRadius,
+        center.y + shortRadius
+    )
+
+    path.lineTo(
+        center.x,
+        center.y + longRadius
+    )
+
+    path.lineTo(
+        center.x - shortRadius,
+        center.y + shortRadius
+    )
+
+    path.lineTo(
+        center.x - longRadius,
+        center.y
+    )
+
+    path.lineTo(
+        center.x - shortRadius,
+        center.y - shortRadius
+    )
+
+    path.close()
+
+    drawPath(
+        path = path,
+        color = color
+    )
+}
+
+
+/*
+ * =============================================================
+ * GRADOS → RADIANES
+ * =============================================================
+ */
+private fun Float.toRadians(): Double {
+    return this *
+        Math.PI /
+        180.0
 }
