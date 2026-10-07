@@ -31,13 +31,13 @@ fun LightCoreVisualizer(
     )
 
     /*
-     * Velocidad del pulso.
+     * VELOCIDAD DEL PULSO
      */
     val pulseDuration = if (isConcertActive) {
         when (concertProgram) {
-            ConcertProgram.STROBE -> 280
-            ConcertProgram.WAVE -> 1000
-            ConcertProgram.SUPERNOVA -> 650
+            ConcertProgram.STROBE -> 260
+            ConcertProgram.WAVE -> 900
+            ConcertProgram.SUPERNOVA -> 550
             ConcertProgram.AURORA -> 1800
         }
     } else {
@@ -45,7 +45,7 @@ fun LightCoreVisualizer(
     }
 
     /*
-     * Animación del pulso.
+     * PULSO
      */
     val pulseScale by transition.animateFloat(
         initialValue = if (isPulseActive) 0.82f else 1.0f,
@@ -68,7 +68,7 @@ fun LightCoreVisualizer(
     )
 
     /*
-     * Intensidad visual del pulso.
+     * BRILLO DEL PULSO
      */
     val glowAlpha by transition.animateFloat(
         initialValue = if (isPulseActive) 0.45f else 0.85f,
@@ -84,7 +84,7 @@ fun LightCoreVisualizer(
     )
 
     /*
-     * Ciclo continuo de colores.
+     * CICLO PRINCIPAL DE COLOR
      */
     val colorStep by transition.animateFloat(
         initialValue = 0f,
@@ -92,10 +92,10 @@ fun LightCoreVisualizer(
         animationSpec = infiniteRepeatable(
             animation = tween(
                 durationMillis = when (concertProgram) {
-                    ConcertProgram.STROBE -> 1800
-                    ConcertProgram.WAVE -> 4000
-                    ConcertProgram.SUPERNOVA -> 2400
-                    ConcertProgram.AURORA -> 7000
+                    ConcertProgram.STROBE -> 1500
+                    ConcertProgram.WAVE -> 3600
+                    ConcertProgram.SUPERNOVA -> 2100
+                    ConcertProgram.AURORA -> 6500
                 },
                 easing = LinearEasing
             ),
@@ -107,21 +107,23 @@ fun LightCoreVisualizer(
     val factor = intensity.factor
 
     /*
-     * Convierte un tono HSV en Color.
+     * HSV -> COLOR
      */
     fun hsvColor(
         hue: Float,
         saturation: Float = 0.9f
     ): Color {
+        val normalizedHue = ((hue % 360f) + 360f) % 360f
+
         return Color.hsv(
-            hue = hue % 360f,
+            hue = normalizedHue,
             saturation = saturation,
             value = 1f
         )
     }
 
     /*
-     * COLOR PRINCIPAL
+     * COLOR BASE
      */
     val concertColor = if (!isConcertActive) {
         Color(0xFF8B5CF6)
@@ -129,48 +131,44 @@ fun LightCoreVisualizer(
         when (concertProgram) {
 
             /*
-             * Púrpura, magenta y azul.
+             * ONDA PÚRPURA
              */
             ConcertProgram.WAVE -> {
-                val waveHue = 270f + (colorStep * 0.45f)
                 hsvColor(
-                    hue = waveHue,
-                    saturation = 0.85f
+                    hue = 260f + (colorStep * 0.55f),
+                    saturation = 0.90f
                 )
             }
 
             /*
-             * Cambios rápidos y fuertes.
+             * STROBE
              */
             ConcertProgram.STROBE -> {
-                val strobeHue =
-                    ((colorStep / 45f).toInt() * 45).toFloat()
+                val step = (colorStep / 60f).toInt() * 60f
 
                 hsvColor(
-                    hue = strobeHue,
+                    hue = step,
                     saturation = 1f
                 )
             }
 
             /*
-             * Explosión multicolor.
+             * SUPERNOVA
              */
             ConcertProgram.SUPERNOVA -> {
-                val novaHue = 210f + colorStep
-
                 hsvColor(
-                    hue = novaHue,
+                    hue = 200f + colorStep,
                     saturation = 0.95f
                 )
             }
 
             /*
-             * Arcoíris suave.
+             * AURORA
              */
             ConcertProgram.AURORA -> {
                 hsvColor(
                     hue = colorStep,
-                    saturation = 0.8f
+                    saturation = 0.82f
                 )
             }
         }
@@ -186,8 +184,8 @@ fun LightCoreVisualizer(
 
             ConcertProgram.WAVE -> {
                 hsvColor(
-                    hue = colorStep + 70f,
-                    saturation = 0.9f
+                    hue = colorStep + 90f,
+                    saturation = 0.90f
                 )
             }
 
@@ -200,15 +198,15 @@ fun LightCoreVisualizer(
 
             ConcertProgram.SUPERNOVA -> {
                 hsvColor(
-                    hue = colorStep + 90f,
-                    saturation = 0.9f
+                    hue = colorStep + 120f,
+                    saturation = 0.95f
                 )
             }
 
             ConcertProgram.AURORA -> {
                 hsvColor(
                     hue = colorStep + 120f,
-                    saturation = 0.75f
+                    saturation = 0.78f
                 )
             }
         }
@@ -224,8 +222,8 @@ fun LightCoreVisualizer(
 
             ConcertProgram.WAVE -> {
                 hsvColor(
-                    hue = colorStep + 150f,
-                    saturation = 0.85f
+                    hue = colorStep + 180f,
+                    saturation = 0.88f
                 )
             }
 
@@ -238,7 +236,7 @@ fun LightCoreVisualizer(
 
             ConcertProgram.SUPERNOVA -> {
                 hsvColor(
-                    hue = colorStep + 180f,
+                    hue = colorStep + 240f,
                     saturation = 0.95f
                 )
             }
@@ -246,57 +244,204 @@ fun LightCoreVisualizer(
             ConcertProgram.AURORA -> {
                 hsvColor(
                     hue = colorStep + 240f,
-                    saturation = 0.8f
+                    saturation = 0.80f
                 )
             }
         }
     }
 
     /*
-     * Pulso háptico.
+     * PULSO HÁPTICO
      */
     if (isPulseActive && pulseScale > 1.23f) {
         onPeakPulse()
     }
 
     /*
-     * LUZ DE PANTALLA COMPLETA
+     * PANTALLA COMPLETA
      */
     Canvas(
         modifier = modifier.fillMaxSize()
     ) {
 
         /*
-         * La intensidad controla el brillo general.
-         *
-         * El pulso hace que la pantalla respire
-         * entre un nivel más bajo y uno más alto.
+         * BRILLO GENERAL
          */
         val screenAlpha = factor * (
-            0.82f + (0.18f * glowAlpha)
+            0.78f + (0.22f * glowAlpha)
         )
 
         /*
-         * Color principal ocupando TODA la pantalla.
+         * =========================================================
+         * MODO NORMAL
+         * =========================================================
          */
-        drawRect(
-            color = concertColor.copy(
-                alpha = screenAlpha
+        if (!isConcertActive) {
+
+            drawRect(
+                color = concertColor.copy(
+                    alpha = screenAlpha
+                )
             )
-        )
+
+        } else {
+
+            /*
+             * =====================================================
+             * CONCIERTO
+             * =====================================================
+             */
+
+            when (concertProgram) {
+
+                /*
+                 * ONDA PÚRPURA
+                 *
+                 * Mezcla tres colores mediante franjas verticales
+                 * que se desplazan continuamente.
+                 */
+                ConcertProgram.WAVE -> {
+
+                    val wavePosition =
+                        (colorStep / 360f) * size.width * 2f
+
+                    val bandWidth = size.width * 0.65f
+
+                    drawRect(
+                        color = concertColor.copy(
+                            alpha = screenAlpha
+                        )
+                    )
+
+                    drawRect(
+                        color = secondColor.copy(
+                            alpha = 0.42f * factor
+                        ),
+                        topLeft = androidx.compose.ui.geometry.Offset(
+                            x = wavePosition - bandWidth,
+                            y = 0f
+                        ),
+                        size = androidx.compose.ui.geometry.Size(
+                            width = bandWidth,
+                            height = size.height
+                        )
+                    )
+
+                    drawRect(
+                        color = thirdColor.copy(
+                            alpha = 0.32f * factor
+                        ),
+                        topLeft = androidx.compose.ui.geometry.Offset(
+                            x = wavePosition - bandWidth * 2f,
+                            y = 0f
+                        ),
+                        size = androidx.compose.ui.geometry.Size(
+                            width = bandWidth,
+                            height = size.height
+                        )
+                    )
+                }
+
+                /*
+                 * STROBE BEAT
+                 *
+                 * Cada etapa ocupa la pantalla completa.
+                 */
+                ConcertProgram.STROBE -> {
+
+                    drawRect(
+                        color = concertColor.copy(
+                            alpha = screenAlpha
+                        )
+                    )
+
+                    /*
+                     * Flash blanco periódico.
+                     */
+                    if (colorStep % 90f < 18f) {
+                        drawRect(
+                            color = Color.White.copy(
+                                alpha = 0.75f * factor
+                            )
+                        )
+                    }
+                }
+
+                /*
+                 * SUPERNOVA
+                 *
+                 * Color intenso + explosiones blancas.
+                 */
+                ConcertProgram.SUPERNOVA -> {
+
+                    drawRect(
+                        color = concertColor.copy(
+                            alpha = screenAlpha
+                        )
+                    )
+
+                    /*
+                     * Segunda capa de color.
+                     */
+                    if (pulseScale > 1.05f) {
+                        drawRect(
+                            color = secondColor.copy(
+                                alpha = 0.28f * factor
+                            )
+                        )
+                    }
+
+                    /*
+                     * Explosión blanca.
+                     */
+                    if (pulseScale > 1.18f) {
+                        drawRect(
+                            color = Color.White.copy(
+                                alpha = 0.72f * factor
+                            )
+                        )
+                    }
+                }
+
+                /*
+                 * AURORA
+                 *
+                 * Tres capas de color que cambian lentamente.
+                 */
+                ConcertProgram.AURORA -> {
+
+                    drawRect(
+                        color = concertColor.copy(
+                            alpha = screenAlpha
+                        )
+                    )
+
+                    drawRect(
+                        color = secondColor.copy(
+                            alpha = 0.30f * factor
+                        )
+                    )
+
+                    drawRect(
+                        color = thirdColor.copy(
+                            alpha = 0.22f * factor
+                        )
+                    )
+                }
+            }
+        }
 
         /*
-         * Supernova:
-         * destello blanco sobre toda la pantalla.
+         * FLASH EXTRA PARA SUPERNOVA
          */
         if (
             isConcertActive &&
             concertProgram == ConcertProgram.SUPERNOVA &&
-            pulseScale > 1.15f
+            pulseScale > 1.20f
         ) {
             drawRect(
                 color = Color.White.copy(
-                    alpha = 0.65f * factor
+                    alpha = 0.30f * factor
                 )
             )
         }
