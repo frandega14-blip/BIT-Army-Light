@@ -1,5 +1,9 @@
 package com.bit.armylight.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,25 +31,32 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.bit.armylight.ui.components.LightCoreVisualizer
 import com.bit.armylight.ui.theme.BackgroundAmoled
 import com.bit.armylight.ui.theme.BackgroundDark
@@ -58,6 +69,7 @@ import com.bit.armylight.ui.theme.PurpleVibrant
 import com.bit.armylight.ui.theme.TextPrimary
 import com.bit.armylight.ui.theme.TextSecondary
 import com.bit.armylight.ui.theme.TextTertiary
+import com.bit.armylight.util.AudioBeatDetector
 import com.bit.armylight.util.HapticController
 import com.bit.armylight.viewmodel.ConcertProgram
 import com.bit.armylight.viewmodel.LightIntensity
@@ -68,33 +80,111 @@ fun ArmyLightScreen(
     viewModel: LightViewModel,
     hapticController: HapticController
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    val bgColor = if (uiState.isBatterySaverEnabled) BackgroundAmoled else BackgroundDark
+    var isRhythmActive by remember {
+        mutableStateOf(false)
+    }
+
+    var rhythmLevel by remember {
+        mutableFloatStateOf(0f)
+    }
+
+    val audioDetector = remember {
+        AudioBeatDetector { level ->
+            rhythmLevel = level
+        }
+    }
+
+    val microphonePermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+
+            if (granted) {
+                isRhythmActive = true
+                audioDetector.start()
+            } else {
+                isRhythmActive = false
+                audioDetector.stop()
+                rhythmLevel = 0f
+            }
+        }
+
+    /*
+     * Limpieza del detector al salir de la pantalla.
+     */
+    DisposableEffect(Unit) {
+        onDispose {
+            audioDetector.stop()
+        }
+    }
+
+    /*
+     * Arranque/parada del detector.
+     */
+    LaunchedEffect(isRhythmActive) {
+
+        if (isRhythmActive) {
+
+            val permissionGranted =
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+
+            if (permissionGranted) {
+                audioDetector.start()
+            }
+
+        } else {
+            audioDetector.stop()
+            rhythmLevel = 0f
+        }
+    }
+
+    val bgColor =
+        if (uiState.isBatterySaverEnabled) {
+            BackgroundAmoled
+        } else {
+            BackgroundDark
+        }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = remember {
+                    MutableInteractionSource()
+                },
                 indication = null
             ) {
                 hapticController.vibrateClick()
                 viewModel.toggleControlsVisibility()
             }
     ) {
-        // Visualizador de luz central
+
+        /*
+         * VISUALIZADOR
+         */
         LightCoreVisualizer(
             isPulseActive = uiState.isPulseActive,
             isConcertActive = uiState.isConcertActive,
             concertProgram = uiState.concertProgram,
             intensity = uiState.intensity,
             isBatterySaver = uiState.isBatterySaverEnabled,
+            isRhythmActive = isRhythmActive,
+            rhythmLevel = rhythmLevel,
             onPeakPulse = {
+
                 if (uiState.isVibrationEnabled) {
+
                     if (uiState.isConcertActive) {
-                        hapticController.vibrateBeat(uiState.intensity.factor)
+                        hapticController.vibrateBeat(
+                            uiState.intensity.factor
+                        )
                     } else {
                         hapticController.vibratePulsePeak()
                     }
@@ -102,20 +192,34 @@ fun ArmyLightScreen(
             }
         )
 
-        // Cabecera superior con marca y badge no oficial
+        /*
+         * CABECERA
+         */
         AnimatedVisibility(
             visible = uiState.areControlsVisible,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            enter = fadeIn() +
+                    slideInVertically(
+                        initialOffsetY = { -it }
+                    ),
+            exit = fadeOut() +
+                    slideOutVertically(
+                        targetOffsetY = { -it }
+                    ),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
-                .padding(top = 18.dp, start = 20.dp, end = 20.dp)
+                .padding(
+                    top = 18.dp,
+                    start = 20.dp,
+                    end = 20.dp
+                )
         ) {
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
+
                 Text(
                     text = "BIT | ARMY LIGHT",
                     style = MaterialTheme.typography.headlineLarge.copy(
@@ -125,17 +229,26 @@ fun ArmyLightScreen(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(
+                    modifier = Modifier.height(4.dp)
+                )
 
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = PurplePrimary.copy(alpha = 0.20f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, PurpleBright.copy(alpha = 0.35f)),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        PurpleBright.copy(alpha = 0.35f)
+                    ),
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
+
                     Text(
                         text = "Fan-made · No oficial",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp),
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 3.dp
+                        ),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = PurpleBright,
                             fontWeight = FontWeight.Medium
@@ -145,31 +258,57 @@ fun ArmyLightScreen(
             }
         }
 
-        // Panel de controles inferior
+        /*
+         * PANEL DE CONTROLES
+         */
         AnimatedVisibility(
             visible = uiState.areControlsVisible,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+            enter = fadeIn() +
+                    slideInVertically(
+                        initialOffsetY = { it }
+                    ),
+            exit = fadeOut() +
+                    slideOutVertically(
+                        targetOffsetY = { it }
+                    ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 18.dp)
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 18.dp
+                )
         ) {
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xE6080312))
-                    .border(1.dp, GlassSurfaceBorder, RoundedCornerShape(28.dp))
+                    .clip(
+                        RoundedCornerShape(28.dp)
+                    )
+                    .background(
+                        Color(0xE6080312)
+                    )
+                    .border(
+                        1.dp,
+                        GlassSurfaceBorder,
+                        RoundedCornerShape(28.dp)
+                    )
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Selector de Intensidad (30%, 60%, 100%)
+
+                /*
+                 * INTENSIDAD
+                 */
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween,
+                    verticalAlignment =
+                        Alignment.CenterVertically
                 ) {
+
                     Text(
                         text = "INTENSIDAD",
                         style = MaterialTheme.typography.labelSmall.copy(
@@ -180,63 +319,116 @@ fun ArmyLightScreen(
                     )
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement =
+                            Arrangement.spacedBy(8.dp)
                     ) {
-                        LightIntensity.values().forEach { level ->
-                            val isSelected = uiState.intensity == level
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) PurpleVibrant else GlassSurface)
-                                    .border(
-                                        1.dp,
-                                        if (isSelected) PurpleBright else GlassSurfaceBorder,
-                                        RoundedCornerShape(12.dp)
+
+                        LightIntensity.values()
+                            .forEach { level ->
+
+                                val isSelected =
+                                    uiState.intensity == level
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                        .background(
+                                            if (isSelected) {
+                                                PurpleVibrant
+                                            } else {
+                                                GlassSurface
+                                            }
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) {
+                                                PurpleBright
+                                            } else {
+                                                GlassSurfaceBorder
+                                            },
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                        .clickable {
+                                            hapticController
+                                                .vibrateClick()
+
+                                            viewModel
+                                                .setIntensity(level)
+                                        }
+                                        .padding(
+                                            horizontal = 14.dp,
+                                            vertical = 7.dp
+                                        )
+                                ) {
+
+                                    Text(
+                                        text = level.label,
+                                        fontSize = 12.sp,
+                                        fontWeight =
+                                            if (isSelected) {
+                                                FontWeight.Bold
+                                            } else {
+                                                FontWeight.Medium
+                                            },
+                                        color =
+                                            if (isSelected) {
+                                                Color.White
+                                            } else {
+                                                TextSecondary
+                                            }
                                     )
-                                    .clickable {
-                                        hapticController.vibrateClick()
-                                        viewModel.setIntensity(level)
-                                    }
-                                    .padding(horizontal = 14.dp, vertical = 7.dp)
-                            ) {
-                                Text(
-                                    text = level.label,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.White else TextSecondary
-                                )
+                                }
                             }
-                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(
+                    modifier = Modifier.height(18.dp)
+                )
 
-                // Botones principales: PULSO y CONCIERTO
+                /*
+                 * PULSO + CONCIERTO
+                 */
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement =
+                        Arrangement.spacedBy(12.dp)
                 ) {
-                    // Botón Pulso
+
                     ModeToggleButton(
                         title = "Pulso",
-                        subtitle = if (uiState.isPulseActive) "Activo" else "Apagado",
+                        subtitle =
+                            if (uiState.isPulseActive) {
+                                "Activo"
+                            } else {
+                                "Apagado"
+                            },
                         icon = Icons.Default.Bolt,
-                        isActive = uiState.isPulseActive,
-                        modifier = Modifier.weight(1f),
+                        isActive =
+                            uiState.isPulseActive,
+                        modifier =
+                            Modifier.weight(1f),
                         onClick = {
                             hapticController.vibrateClick()
                             viewModel.togglePulse()
                         }
                     )
 
-                    // Botón Concierto
                     ModeToggleButton(
                         title = "Concierto",
-                        subtitle = if (uiState.isConcertActive) uiState.concertProgram.title else "Modo Show",
+                        subtitle =
+                            if (uiState.isConcertActive) {
+                                uiState.concertProgram.title
+                            } else {
+                                "Modo Show"
+                            },
                         icon = Icons.Default.MusicNote,
-                        isActive = uiState.isConcertActive,
-                        modifier = Modifier.weight(1f),
+                        isActive =
+                            uiState.isConcertActive,
+                        modifier =
+                            Modifier.weight(1f),
                         onClick = {
                             hapticController.vibrateClick()
                             viewModel.toggleConcert()
@@ -244,92 +436,212 @@ fun ArmyLightScreen(
                     )
                 }
 
-                // Si modo concierto está activo, mostrar programas de concierto
+                /*
+                 * PROGRAMAS
+                 */
                 if (uiState.isConcertActive) {
-                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Spacer(
+                        modifier = Modifier.height(14.dp)
+                    )
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement =
+                            Arrangement.spacedBy(6.dp)
                     ) {
-                        ConcertProgram.values().forEach { program ->
-                            val isCurrent = uiState.concertProgram == program
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isCurrent) GlassSurfaceActive else Color.Transparent)
-                                    .border(
-                                        1.dp,
-                                        if (isCurrent) PurpleBright.copy(alpha = 0.8f) else GlassSurfaceBorder.copy(alpha = 0.3f),
-                                        RoundedCornerShape(10.dp)
+
+                        ConcertProgram.values()
+                            .forEach { program ->
+
+                                val isCurrent =
+                                    uiState.concertProgram == program
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .background(
+                                            if (isCurrent) {
+                                                GlassSurfaceActive
+                                            } else {
+                                                Color.Transparent
+                                            }
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isCurrent) {
+                                                PurpleBright.copy(
+                                                    alpha = 0.8f
+                                                )
+                                            } else {
+                                                GlassSurfaceBorder.copy(
+                                                    alpha = 0.3f
+                                                )
+                                            },
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable {
+                                            hapticController
+                                                .vibrateClick()
+
+                                            viewModel
+                                                .setConcertProgram(
+                                                    program
+                                                )
+                                        }
+                                        .padding(
+                                            vertical = 6.dp
+                                        ),
+                                    contentAlignment =
+                                        Alignment.Center
+                                ) {
+
+                                    Text(
+                                        text = program.title,
+                                        fontSize = 10.sp,
+                                        fontWeight =
+                                            if (isCurrent) {
+                                                FontWeight.Bold
+                                            } else {
+                                                FontWeight.Normal
+                                            },
+                                        color =
+                                            if (isCurrent) {
+                                                TextPrimary
+                                            } else {
+                                                TextSecondary
+                                            },
+                                        maxLines = 1
                                     )
-                                    .clickable {
-                                        hapticController.vibrateClick()
-                                        viewModel.setConcertProgram(program)
-                                    }
-                                    .padding(vertical = 6.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = program.title,
-                                    fontSize = 10.sp,
-                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isCurrent) TextPrimary else TextSecondary,
-                                    maxLines = 1
-                                )
+                                }
                             }
-                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
 
-                // Opciones secundarias: Vibración & Ahorro de batería OLED
+                /*
+                 * RITMO + VIBRACIÓN + OLED
+                 */
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween,
+                    verticalAlignment =
+                        Alignment.CenterVertically
                 ) {
-                    // Botón Vibración
+
+                    MiniOptionChip(
+                        icon = Icons.Default.Mic,
+                        label = "Ritmo",
+                        isEnabled = isRhythmActive,
+                        onClick = {
+
+                            hapticController.vibrateClick()
+
+                            if (isRhythmActive) {
+
+                                isRhythmActive = false
+                                audioDetector.stop()
+
+                            } else {
+
+                                val granted =
+                                    ContextCompat
+                                        .checkSelfPermission(
+                                            context,
+                                            Manifest.permission.RECORD_AUDIO
+                                        ) ==
+                                        PackageManager.PERMISSION_GRANTED
+
+                                if (granted) {
+
+                                    isRhythmActive = true
+
+                                } else {
+
+                                    microphonePermissionLauncher
+                                        .launch(
+                                            Manifest.permission.RECORD_AUDIO
+                                        )
+                                }
+                            }
+                        }
+                    )
+
                     MiniOptionChip(
                         icon = Icons.Default.Vibration,
                         label = "Vibración",
-                        isEnabled = uiState.isVibrationEnabled,
+                        isEnabled =
+                            uiState.isVibrationEnabled,
                         onClick = {
                             hapticController.vibrateClick()
                             viewModel.toggleVibration()
                         }
                     )
 
-                    // Botón Ahorro OLED
                     MiniOptionChip(
                         icon = Icons.Default.Eco,
                         label = "Ahorro OLED",
-                        isEnabled = uiState.isBatterySaverEnabled,
+                        isEnabled =
+                            uiState.isBatterySaverEnabled,
                         onClick = {
                             hapticController.vibrateClick()
                             viewModel.toggleBatterySaver()
                         }
                     )
                 }
+
+                /*
+                 * INDICADOR DE NIVEL DEL RITMO
+                 */
+                if (isRhythmActive) {
+
+                    Spacer(
+                        modifier = Modifier.height(12.dp)
+                    )
+
+                    Text(
+                        text = "🎤 ESCUCHANDO EL RITMO",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PurpleBright
+                    )
+                }
             }
         }
 
-        // Pista de interacción sutil para volver a mostrar controles cuando están ocultos
+        /*
+         * CONTROLES OCULTOS
+         */
         if (!uiState.areControlsVisible) {
+
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = 20.dp)
                     .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                    .background(
+                        Color.Black.copy(alpha = 0.4f)
+                    )
+                    .padding(
+                        horizontal = 14.dp,
+                        vertical = 6.dp
+                    )
             ) {
+
                 Text(
                     text = "Toca para controles",
                     fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.45f),
+                    color = Color.White.copy(
+                        alpha = 0.45f
+                    ),
                     fontWeight = FontWeight.Light
                 )
             }
@@ -346,49 +658,90 @@ private fun ModeToggleButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (isActive) PurpleVibrant.copy(alpha = 0.35f) else GlassSurface)
+            .clip(
+                RoundedCornerShape(18.dp)
+            )
+            .background(
+                if (isActive) {
+                    PurpleVibrant.copy(alpha = 0.35f)
+                } else {
+                    GlassSurface
+                }
+            )
             .border(
                 1.5.dp,
-                if (isActive) PurpleBright else GlassSurfaceBorder,
+                if (isActive) {
+                    PurpleBright
+                } else {
+                    GlassSurfaceBorder
+                },
                 RoundedCornerShape(18.dp)
             )
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 14.dp)
+            .padding(
+                vertical = 12.dp,
+                horizontal = 14.dp
+            )
     ) {
+
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment =
+                Alignment.CenterVertically
         ) {
+
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (isActive) PurpleVibrant else Color.White.copy(alpha = 0.08f)),
-                contentAlignment = Alignment.Center
+                    .background(
+                        if (isActive) {
+                            PurpleVibrant
+                        } else {
+                            Color.White.copy(alpha = 0.08f)
+                        }
+                    ),
+                contentAlignment =
+                    Alignment.Center
             ) {
+
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    tint = if (isActive) Color.White else TextSecondary,
+                    tint =
+                        if (isActive) {
+                            Color.White
+                        } else {
+                            TextSecondary
+                        },
                     modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(
+                modifier = Modifier.width(10.dp)
+            )
 
             Column {
+
                 Text(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
+
                 Text(
                     text = subtitle,
                     fontSize = 11.sp,
-                    color = if (isActive) PurpleBright else TextSecondary
+                    color =
+                        if (isActive) {
+                            PurpleBright
+                        } else {
+                            TextSecondary
+                        }
                 )
             }
         }
@@ -402,31 +755,68 @@ private fun MiniOptionChip(
     isEnabled: Boolean,
     onClick: () -> Unit
 ) {
+
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isEnabled) PurplePrimary.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.04f))
+            .clip(
+                RoundedCornerShape(14.dp)
+            )
+            .background(
+                if (isEnabled) {
+                    PurplePrimary.copy(alpha = 0.20f)
+                } else {
+                    Color.White.copy(alpha = 0.04f)
+                }
+            )
             .border(
                 1.dp,
-                if (isEnabled) PurpleBright.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f),
+                if (isEnabled) {
+                    PurpleBright.copy(alpha = 0.5f)
+                } else {
+                    Color.White.copy(alpha = 0.08f)
+                },
                 RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(
+                horizontal = 10.dp,
+                vertical = 7.dp
+            ),
+        verticalAlignment =
+            Alignment.CenterVertically
     ) {
+
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (isEnabled) PurpleBright else TextSecondary.copy(alpha = 0.6f),
+            tint =
+                if (isEnabled) {
+                    PurpleBright
+                } else {
+                    TextSecondary.copy(alpha = 0.6f)
+                },
             modifier = Modifier.size(15.dp)
         )
-        Spacer(modifier = Modifier.width(6.dp))
+
+        Spacer(
+            modifier = Modifier.width(5.dp)
+        )
+
         Text(
             text = label,
-            fontSize = 11.sp,
-            fontWeight = if (isEnabled) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isEnabled) TextPrimary else TextSecondary
+            fontSize = 10.sp,
+            fontWeight =
+                if (isEnabled) {
+                    FontWeight.SemiBold
+                } else {
+                    FontWeight.Normal
+                },
+            color =
+                if (isEnabled) {
+                    TextPrimary
+                } else {
+                    TextSecondary
+                }
         )
     }
 }
