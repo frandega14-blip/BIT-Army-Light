@@ -607,7 +607,7 @@ fun ArmyLightScreen(
                     )
 
                     Text(
-                        text = "🎤 ESCUCHANDO EL RITMO",
+                       text = "🎤 RITMO: ${(rhythmLevel * 100).toInt()}%"
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = PurpleBright
