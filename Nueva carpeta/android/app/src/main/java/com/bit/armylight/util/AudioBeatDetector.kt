@@ -101,7 +101,7 @@ class AudioBeatDetector(
 
 
                         /*
-                         * RMS DEL AUDIO
+                         * CALCULAR RMS
                          */
 
                         var sum = 0.0
@@ -122,16 +122,15 @@ class AudioBeatDetector(
 
 
                         /*
-                         * SENSIBILIDAD MUY ALTA
+                         * SENSIBILIDAD MUSICAL
                          *
-                         * Un valor pequeño de RMS
-                         * ahora produce una respuesta
-                         * mucho mayor.
+                         * Más sensible que la versión
+                         * original, pero sin exagerar.
                          */
 
                         val normalized =
                             (
-                                rms / 900.0
+                                rms / 700.0
                             )
                                 .coerceIn(
                                     0.0,
@@ -141,34 +140,46 @@ class AudioBeatDetector(
 
 
                         /*
-                         * RESPUESTA RÁPIDA
+                         * SUAVIZADO
+                         *
+                         * La música tiene más influencia
+                         * que el valor anterior, pero la
+                         * transición sigue siendo suave.
                          */
 
                         smoothedLevel =
                             (
-                                smoothedLevel * 0.30f
+                                smoothedLevel * 0.40f
                             ) +
                             (
-                                normalized * 0.70f
+                                normalized * 0.60f
                             )
 
 
                         /*
-                         * RESPUESTA EXTRA A LOS GOLPES
+                         * DETECCIÓN DE CAMBIOS DE RITMO
                          */
 
                         val difference =
                             smoothedLevel -
                             previousLevel
 
+
+                        /*
+                         * PEQUEÑO IMPULSO EN LOS GOLPES
+                         *
+                         * No domina la señal.
+                         * Solo hace destacar los golpes.
+                         */
+
                         val beatBoost =
                             when {
 
                                 difference > 0.08f ->
-                                    0.40f
+                                    0.20f
 
                                 difference > 0.035f ->
-                                    0.20f
+                                    0.08f
 
                                 else ->
                                     0f
@@ -195,7 +206,7 @@ class AudioBeatDetector(
 
 
                         /*
-                         * ENVIAR A COMPOSE
+                         * ACTUALIZAR LA INTERFAZ
                          */
 
                         sendLevel(
@@ -203,13 +214,21 @@ class AudioBeatDetector(
                         )
 
 
+                        /*
+                         * FRECUENCIA DE ACTUALIZACIÓN
+                         */
+
                         try {
-                            Thread.sleep(25)
+                            Thread.sleep(30)
                         } catch (_: InterruptedException) {
                             break
                         }
                     }
 
+
+                    /*
+                     * LIMPIEZA DEL GRABADOR
+                     */
 
                     try {
                         recorder.stop()
@@ -238,6 +257,10 @@ class AudioBeatDetector(
     }
 
 
+    /*
+     * ENVIAR EL NIVEL AL HILO PRINCIPAL
+     */
+
     private fun sendLevel(
         level: Float
     ) {
@@ -253,6 +276,10 @@ class AudioBeatDetector(
         }
     }
 
+
+    /*
+     * DETENER DETECTOR
+     */
 
     fun stop() {
 
