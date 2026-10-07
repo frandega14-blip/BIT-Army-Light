@@ -1,0 +1,6 @@
+{
+  "name": "BIT | ARMY LIGHT",
+  "description": "Aplicación de luz fan-made y modo concierto en púrpura intenso con pulsos, ritmos de concierto, control de intensidad y código nativo Kotlin + Jetpack Compose.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

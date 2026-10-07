@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">BIT | ARMY LIGHT</string>
+    <string name="fan_made_badge">Fan-made · No oficial</string>
+    <string name="pulse_title">Pulso</string>
+    <string name="concert_title">Concierto</string>
+    <string name="intensity_title">Intensidad</string>
+    <string name="vibration_title">Vibración háptica</string>
+    <string name="battery_save_title">Ahorro OLED</string>
+</resources>

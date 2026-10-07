@@ -1,0 +1,8 @@
+<resources>
+    <color name="black_amoled">#000000</color>
+    <color name="dark_background">#05020A</color>
+    <color name="purple_primary">#9D44B5</color>
+    <color name="purple_glow">#BF55EC</color>
+    <color name="purple_core">#E9D5FF</color>
+    <color name="purple_deep">#4A0E4E</color>
+</resources>
