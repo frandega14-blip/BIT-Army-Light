@@ -606,15 +606,12 @@ fun ArmyLightScreen(
                         modifier = Modifier.height(12.dp)
                     )
 
-                    Text(
-                       text = "🎤 RITMO: ${(rhythmLevel * 100).toInt()}%"
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PurpleBright
-                    )
-                }
-            }
-        }
+                   Text(
+    text = "🎤 RITMO: ${(rhythmLevel * 100).toInt()}%",
+    fontSize = 10.sp,
+    fontWeight = FontWeight.Bold,
+    color = PurpleBright
+)
 
         /*
          * CONTROLES OCULTOS
