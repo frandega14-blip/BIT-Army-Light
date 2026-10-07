@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
 import com.bit.armylight.viewmodel.ConcertProgram
 import com.bit.armylight.viewmodel.LightIntensity
@@ -74,7 +75,7 @@ fun LightCoreVisualizer(
     )
 
     /*
-     * Pulso.
+     * Pulso visual.
      */
     val pulseAnimation by infiniteTransition.animateFloat(
         initialValue = 0.82f,
@@ -128,7 +129,7 @@ fun LightCoreVisualizer(
     )
 
     /*
-     * Animación de la órbita.
+     * Rotación de las órbitas.
      */
     val orbitRotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -165,6 +166,10 @@ fun LightCoreVisualizer(
             1f
         )
 
+    /*
+     * La figura puede respirar o pulsar,
+     * pero NO cambia de color.
+     */
     val finalScale =
         (
             if (isPulseActive) {
@@ -186,7 +191,7 @@ fun LightCoreVisualizer(
         )
 
     /*
-     * La figura central NO cambia de color.
+     * Color FIJO de la figura.
      */
     val figureColor =
         Color(0xFFF8F2FF)
@@ -207,16 +212,17 @@ fun LightCoreVisualizer(
      * VIBRACIÓN
      * ============================================================
      *
-     * Antes la vibración solamente se ejecutaba en RITMO.
+     * RITMO:
+     *   Vibra cuando se detecta un pico de audio.
      *
-     * Ahora:
+     * PULSO:
+     *   Vibra siguiendo el ciclo del pulso.
      *
-     * RITMO      -> picos de audio
-     * PULSO      -> cada ciclo del pulso
-     * CONCIERTO  -> golpes periódicos
+     * CONCIERTO:
+     *   Vibra siguiendo el patrón del espectáculo.
      *
-     * ArmyLightScreen decide si realmente se vibra mediante
-     * uiState.isVibrationEnabled.
+     * El callback onPeakPulse() ya está protegido por
+     * ArmyLightScreen mediante uiState.isVibrationEnabled.
      */
 
     var lastPeak by remember {
@@ -225,7 +231,7 @@ fun LightCoreVisualizer(
 
     /*
      * RITMO:
-     * vibración cuando el audio supera el umbral.
+     * vibración por pico de audio.
      */
     LaunchedEffect(
         isRhythmActive,
@@ -254,11 +260,10 @@ fun LightCoreVisualizer(
 
     /*
      * PULSO / CONCIERTO:
-     * vibración continua sincronizada con el efecto.
+     * vibración automática.
      *
-     * Este efecto NO se ejecuta en Ritmo para evitar
-     * que el micrófono y el patrón automático vibren
-     * al mismo tiempo.
+     * No se ejecuta en Ritmo para evitar que el patrón
+     * automático interfiera con la detección del micrófono.
      */
     LaunchedEffect(
         isRhythmActive,
@@ -325,17 +330,18 @@ fun LightCoreVisualizer(
              * FONDO DINÁMICO
              * ====================================================
              *
-             * AQUÍ está el cambio principal:
-             * la figura permanece estable y el fondo cambia.
+             * La figura central permanece estable.
+             * El fondo cambia según el modo.
              */
 
             when {
 
                 /*
-                 * ================================
+                 * =================================================
                  * RITMO
-                 * ================================
+                 * =================================================
                  */
+
                 isRhythmActive -> {
 
                     val rhythmColor =
@@ -382,10 +388,11 @@ fun LightCoreVisualizer(
 
 
                 /*
-                 * ================================
+                 * =================================================
                  * CONCIERTO
-                 * ================================
+                 * =================================================
                  */
+
                 isConcertActive -> {
 
                     when (
@@ -473,10 +480,6 @@ fun LightCoreVisualizer(
                                     color
                             )
 
-                            /*
-                             * Segundo tono encima para que
-                             * el fondo tenga profundidad.
-                             */
                             if (!flash) {
 
                                 drawRect(
@@ -540,7 +543,8 @@ fun LightCoreVisualizer(
                                                 Color(0xFF33005A),
                                                 Color(0xFF050008)
                                             ),
-                                        center = center,
+                                        center =
+                                            center,
                                         radius =
                                             size.maxDimension *
                                                 (
@@ -608,10 +612,11 @@ fun LightCoreVisualizer(
 
 
                 /*
-                 * ================================
+                 * =================================================
                  * PULSO
-                 * ================================
+                 * =================================================
                  */
+
                 isPulseActive -> {
 
                     val pulseAmount =
@@ -645,7 +650,8 @@ fun LightCoreVisualizer(
                                         pulseColor,
                                         Color(0xFF050008)
                                     ),
-                                center = center,
+                                center =
+                                    center,
                                 radius =
                                     size.maxDimension *
                                         (
@@ -659,10 +665,11 @@ fun LightCoreVisualizer(
 
 
                 /*
-                 * ================================
+                 * =================================================
                  * ESTADO NORMAL
-                 * ================================
+                 * =================================================
                  */
+
                 else -> {
 
                     drawRect(
@@ -674,7 +681,8 @@ fun LightCoreVisualizer(
                                         Color(0xFF100018),
                                         Color(0xFF050008)
                                     ),
-                                center = center,
+                                center =
+                                    center,
                                 radius =
                                     size.maxDimension *
                                         0.72f
@@ -688,9 +696,6 @@ fun LightCoreVisualizer(
              * ====================================================
              * HALO DE LA FIGURA
              * ====================================================
-             *
-             * El halo también permanece blanco/lavanda.
-             * No sigue el cambio de color del fondo.
              */
 
             drawCircle(
@@ -710,13 +715,15 @@ fun LightCoreVisualizer(
                                 ),
                                 Color.Transparent
                             ),
-                        center = center,
+                        center =
+                            center,
                         radius =
                             symbolRadius *
                                 2.35f *
                                 finalScale
                     ),
-                center = center,
+                center =
+                    center,
                 radius =
                     symbolRadius *
                         2.35f *
@@ -747,13 +754,15 @@ fun LightCoreVisualizer(
                                 ),
                                 Color.Transparent
                             ),
-                        center = center,
+                        center =
+                            center,
                         radius =
                             symbolRadius *
                                 1.45f *
                                 finalScale
                     ),
-                center = center,
+                center =
+                    center,
                 radius =
                     symbolRadius *
                         1.45f *
@@ -763,12 +772,13 @@ fun LightCoreVisualizer(
 
             /*
              * ====================================================
-             * ÓRBITA BLANCA
+             * ÓRBITA PRINCIPAL
              * ====================================================
              */
 
             drawOrbit(
-                center = center,
+                center =
+                    center,
                 radiusX =
                     symbolRadius *
                         1.62f *
@@ -790,11 +800,14 @@ fun LightCoreVisualizer(
 
 
             /*
-             * Segunda órbita.
+             * ====================================================
+             * SEGUNDA ÓRBITA
+             * ====================================================
              */
 
             drawOrbit(
-                center = center,
+                center =
+                    center,
                 radiusX =
                     symbolRadius *
                         1.45f *
@@ -820,12 +833,13 @@ fun LightCoreVisualizer(
              * FIGURA CENTRAL
              * ====================================================
              *
-             * SIEMPRE BLANCA/LAVANDA.
-             * NO cambia al ritmo del fondo.
+             * BLANCA/LAVANDA.
+             * NO CAMBIA CON EL COLOR DEL FONDO.
              */
 
             drawFourPointStar(
-                center = center,
+                center =
+                    center,
                 radius =
                     symbolRadius *
                         finalScale,
@@ -837,7 +851,9 @@ fun LightCoreVisualizer(
 
 
             /*
-             * Centro.
+             * ====================================================
+             * CENTRO
+             * ====================================================
              */
 
             drawCircle(
@@ -847,7 +863,8 @@ fun LightCoreVisualizer(
                             0.96f *
                                 baseAlpha
                     ),
-                center = center,
+                center =
+                    center,
                 radius =
                     symbolRadius *
                         0.12f *
@@ -1100,11 +1117,12 @@ private fun DrawScope.drawFourPointStar(
 
 
     /*
-     * Resplandor.
+     * Resplandor exterior.
      */
 
     drawPath(
-        path = path,
+        path =
+            path,
         color =
             Color.White.copy(
                 alpha =
@@ -1122,13 +1140,12 @@ private fun DrawScope.drawFourPointStar(
 
 
     /*
-     * Cuerpo de la figura.
-     *
-     * Blanco/lavanda fijo.
+     * Cuerpo principal.
      */
 
     drawPath(
-        path = path,
+        path =
+            path,
         brush =
             Brush.linearGradient(
                 colors =
@@ -1172,6 +1189,12 @@ private fun DrawScope.drawFourPointStar(
  * ================================================================
  * ÓRBITA
  * ================================================================
+ *
+ * CORRECCIÓN:
+ * No se utilizan rotation/center dentro de drawOval().
+ *
+ * Se utiliza rotate { drawOval(...) }, que sí es compatible
+ * con la API de Compose utilizada por el proyecto.
  */
 
 private fun DrawScope.drawOrbit(
@@ -1182,39 +1205,37 @@ private fun DrawScope.drawOrbit(
     color: Color
 ) {
 
-    val canvasCenter =
-        center
-
-    /*
-     * La órbita se dibuja como una elipse.
-     */
-
-    drawOval(
-        color = color,
-        topLeft =
-            Offset(
-                center.x -
-                    radiusX,
-                center.y -
-                    radiusY
-            ),
-        size =
-            androidx.compose.ui.geometry.Size(
-                radiusX * 2f,
-                radiusY * 2f
-            ),
-        rotation =
+    rotate(
+        degrees =
             rotationDegrees,
-        center =
-            canvasCenter,
-        style =
-            Stroke(
-                width =
-                    5.dp.toPx(),
-                cap =
-                    StrokeCap.Round
-            )
-    )
+        pivot =
+            center
+    ) {
+
+        drawOval(
+            color =
+                color,
+            topLeft =
+                Offset(
+                    center.x -
+                        radiusX,
+                    center.y -
+                        radiusY
+                ),
+            size =
+                androidx.compose.ui.geometry.Size(
+                    radiusX * 2f,
+                    radiusY * 2f
+                ),
+            style =
+                Stroke(
+                    width =
+                        5.dp.toPx(),
+                    cap =
+                        StrokeCap.Round
+                )
+        )
+    }
 }
 
 
@@ -1294,8 +1315,10 @@ private fun DrawScope.drawSparkle(
     path.close()
 
     drawPath(
-        path = path,
-        color = color
+        path =
+            path,
+        color =
+            color
     )
 }
 
